@@ -1,0 +1,87 @@
+{
+  "slug": "quotecard",
+  "type": "gas-webapp",
+  "sourceDir": "src",
+  "runtimeDir": "~/dev/runtime/gas-dev/workspaces/gas_dev/projects/quotecard",
+  "payload": {
+    "manifest": "appsscript.json",
+    "files": [
+      "Code.js",
+      "index.html"
+    ]
+  },
+  "build": {
+    "plainScripts": [
+      "quote-data.js"
+    ],
+    "babelScripts": [
+      "app.jsx"
+    ],
+    "backendFiles": [
+      "code.gs",
+      "gas-backoff.gs",
+      "api.gs"
+    ],
+    "libraryAssets": [],
+    "libraryPins": {},
+    "mountComponent": "App",
+    "htmlTemplate": "src/frontend/index.html"
+  },
+  "deploy": {
+    "mode": "clasp",
+    "claspDir": "clasp",
+    "deploymentIdFiles": {
+      "staging": ".deployment-id.staging",
+      "prod": ".deployment-id.prod"
+    },
+    "webappUrlFiles": {
+      "staging": ".webapp-url.staging",
+      "prod": ".webapp-url.prod"
+    },
+    "previousProdVersionFile": ".deployment-prev.prod",
+    "title": "좋은생각카드"
+  },
+  "docs": {
+    "required": [
+      "docs/PRD.md",
+      "docs/API.md",
+      "docs/ARCHITECTURE.md",
+      "docs/DEPLOYMENT.md",
+      "docs/TESTING.md"
+    ]
+  },
+  "ui": {
+    "mode": "mobile-first",
+    "desktopBehavior": "centered-mobile-shell",
+    "viewports": [
+      {
+        "name": "mobile",
+        "width": 390,
+        "height": 844,
+        "deviceScaleFactor": 3,
+        "maxShellWidth": 480
+      },
+      {
+        "name": "desktop",
+        "width": 1440,
+        "height": 900,
+        "deviceScaleFactor": 1,
+        "maxShellWidth": 480
+      }
+    ]
+  },
+  "frontend": {
+    "provider": "codex"
+  },
+  "wrapper": {
+    "enabled": true,
+    "host": "cloudflare-pages",
+    "projectName": "gas-quotecard",
+    "appName": "좋은생각카드",
+    "shortName": "좋은생각카드",
+    "themeColor": "#2F6B4F"
+  },
+  "design": {
+    "detectAllowlist": []
+  }
+}

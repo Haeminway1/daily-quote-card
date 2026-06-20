@@ -1,0 +1,24 @@
+{
+  "name": "quotecard-gas",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "python3 compile_code.py",
+    "wrapper:build": "node tools/build-wrapper-local.mjs --project .",
+    "wrapper:deploy": "node tools/deploy-wrapper-local.mjs --project .",
+    "test:project-contract": "node tests/project-contract-check.mjs",
+    "test:runtime-build": "node tests/runtime-build-contract.mjs",
+    "test:deploy-state": "node tests/deploy-state-contract.mjs",
+    "test:inline-resources": "node tests/inline-resource-check.mjs \"$(node tests/runtime-path.mjs build/index.html)\"",
+    "test:design:antipatterns": "npm run build && npm run test:inline-resources && node tests/design-antipattern-check.mjs \"$(node tests/runtime-path.mjs build/index.html)\"",
+    "test:adaptive:local": "npm run build && node tests/adaptive-viewport-check.mjs \"$(node tests/runtime-path.mjs build/index.html)\"",
+    "test:adaptive:live": "test -n \"$WEBAPP_URL\" && node tests/adaptive-viewport-check.mjs \"$WEBAPP_URL\"",
+    "test:mobile:local": "npm run build && node tests/mobile-viewport-check.mjs \"$(node tests/runtime-path.mjs build/index.html)\"",
+    "test:mobile:live": "test -n \"$WEBAPP_URL\" && node tests/mobile-viewport-check.mjs \"$WEBAPP_URL\""
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.5",
+    "playwright": "^1.60.0"
+  }
+}

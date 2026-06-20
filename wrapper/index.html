@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>__APP_NAME__</title>
+  <meta name="theme-color" content="__THEME_COLOR__">
+  <meta name="description" content="__APP_NAME__ PWA 래퍼">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="apple-touch-icon" href="./apple-touch-icon.png">
+  <style>
+    :root { color-scheme: light; --navy: __THEME_COLOR__; --accent: #2E72F0; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; width: 100%; min-height: 100%; height: 100%; background: #0B1220; font-family: -apple-system, BlinkMacSystemFont, "Noto Sans KR", sans-serif; }
+    body { overflow: hidden; }
+    .pwa-shell { position: fixed; inset: 0; display: flex; flex-direction: column; background: #0B1220; }
+    .safe-top { height: env(safe-area-inset-top, 0px); flex: 0 0 auto; background: var(--navy); }
+    .app-frame { flex: 1 1 auto; width: 100%; min-width: 0; min-height: 0; border: 0; display: block; background: #fff; }
+    .status-pill { position: fixed; top: calc(env(safe-area-inset-top, 0px) + 10px); left: 50%; transform: translateX(-50%); z-index: 4; max-width: calc(100% - 32px); padding: 8px 12px; border-radius: 999px; background: rgba(15, 42, 74, 0.92); color: #fff; font-size: 12.5px; font-weight: 800; box-shadow: 0 10px 30px rgba(0,0,0,.18); opacity: 0; pointer-events: none; transition: opacity .18s ease; }
+    body[data-gas-frame-state="setup"] .status-pill,
+    body[data-gas-frame-state="error"] .status-pill { opacity: 1; }
+    .setup-panel { position: fixed; inset: 0; z-index: 5; display: none; align-items: center; justify-content: center; padding: 22px; background: linear-gradient(180deg, __THEME_COLOR__, #07111F); color: #fff; }
+    body[data-gas-frame-state="setup"] .setup-panel,
+    body[data-gas-frame-state="error"] .setup-panel { display: flex; }
+    .setup-card { width: min(100%, 430px); border-radius: 26px; padding: 24px 20px; background: rgba(255,255,255,.11); border: 1px solid rgba(255,255,255,.2); box-shadow: 0 24px 80px rgba(0,0,0,.32); }
+    .setup-card h1 { margin: 0; font-size: 22px; line-height: 1.25; }
+    .setup-card p { margin: 10px 0 0; color: rgba(255,255,255,.8); font-size: 14px; line-height: 1.55; word-break: keep-all; }
+    .setup-card label { display: block; margin-top: 18px; font-size: 13px; font-weight: 850; color: rgba(255,255,255,.86); }
+    .setup-card input { width: 100%; margin-top: 8px; height: 46px; border: 1px solid rgba(255,255,255,.28); border-radius: 14px; background: rgba(255,255,255,.95); color: #101828; padding: 0 12px; font-size: 14px; }
+    .setup-card button { width: 100%; margin-top: 12px; height: 48px; border: 0; border-radius: 15px; background: #fff; color: var(--navy); font-size: 15px; font-weight: 900; }
+    .setup-error { min-height: 18px; margin-top: 10px; color: #FECACA; font-size: 12.5px; font-weight: 800; overflow-wrap: anywhere; }
+    .setup-hint { margin-top: 13px; padding: 10px 11px; border-radius: 14px; background: rgba(255,255,255,.1); color: rgba(255,255,255,.78); font-size: 12.5px; line-height: 1.45; }
+  </style>
+</head>
+<body data-gas-frame-state="loading">
+  <div class="pwa-shell" data-test-id="pwa-wrapper-shell">
+    <div class="safe-top" aria-hidden="true"></div>
+    <iframe id="appframe" class="app-frame" data-test-id="pwa-gas-frame" title="__APP_NAME__" allow="clipboard-read; clipboard-write; web-share"></iframe>
+  </div>
+  <div class="status-pill" data-test-id="pwa-wrapper-status">GAS 앱 연결 중...</div>
+  <section class="setup-panel" data-test-id="pwa-wrapper-setup" aria-label="GAS URL 설정">
+    <div class="setup-card">
+      <h1>__APP_NAME__ 연결</h1>
+      <p>배포된 GAS 웹앱 URL을 입력하면 이 기기에 저장하고 홈화면 앱처럼 실행합니다.</p>
+      <label for="gas-url-input">GAS 웹앱 /exec URL</label>
+      <input id="gas-url-input" data-test-id="pwa-gas-url-input" inputmode="url" autocomplete="url" placeholder="https://script.google.com/macros/s/.../exec">
+      <button id="save-gas-url" data-test-id="pwa-save-gas-url" type="button">URL 저장하고 열기</button>
+      <div class="setup-error" data-test-id="pwa-wrapper-error"></div>
+      <div class="setup-hint">초기 배포 후에는 <code>?gasUrl=배포URL</code>로 열어 자동 저장할 수 있습니다. 저장된 URL은 이 프로젝트 origin의 localStorage에만 보관됩니다.</div>
+    </div>
+  </section>
+
+  <script src="./config.js"></script>
+  <script>
+    (function () {
+      var STORAGE_KEY = 'gas.quotecard.wrapper.gasUrl.v1';
+      var frame = document.getElementById('appframe');
+      var status = document.querySelector('[data-test-id="pwa-wrapper-status"]');
+      var input = document.getElementById('gas-url-input');
+      var saveButton = document.getElementById('save-gas-url');
+      var errorBox = document.querySelector('[data-test-id="pwa-wrapper-error"]');
+      var params = new URLSearchParams(window.location.search);
+      var config = window.GAS_WRAPPER_CONFIG || {};
+      var handshakeTimer = 0;
+      var handshakeDeadline = 0;
+      var readyFallback = 0;
+      var expectedFrameOrigin = '';
+
+      function setState(state, message) {
+        document.body.dataset.gasFrameState = state;
+        if (status) status.textContent = message || '';
+      }
+
+      function readSavedGasUrl() {
+        try { return localStorage.getItem(STORAGE_KEY) || ''; } catch (_) { return ''; }
+      }
+
+      function saveGasUrl(value) {
+        try { localStorage.setItem(STORAGE_KEY, value); } catch (_) {}
+      }
+
+      function removeWrapperParams(searchParams) {
+        var next = new URLSearchParams(searchParams.toString());
+        next.delete('gasUrl');
+        return next;
+      }
+
+      function isLocalWrapper() {
+        return window.location.protocol === 'file:' || /^(localhost|127\.0\.0\.1)$/.test(window.location.hostname);
+      }
+
+      function isAllowedGasUrl(value) {
+        if (!value || !String(value).trim()) return false;
+        try {
+          var url = new URL(value, window.location.href);
+          if (url.origin === '__GAS_ORIGIN__' && /^\/macros\/s\/[^/]+\/exec\/?$/.test(url.pathname)) return true;
+          if (isLocalWrapper() && (url.protocol === 'http:' || url.protocol === 'https:' || url.protocol === 'file:')) return true;
+        } catch (_) {}
+        return false;
+      }
+
+      function resolveGasUrl() {
+        return params.get('gasUrl') || config.gasUrl || readSavedGasUrl() || '';
+      }
+
+      function buildFrameUrl(gasUrl) {
+        var target = new URL(gasUrl, window.location.href);
+        var forwarded = removeWrapperParams(params);
+        forwarded.forEach(function (value, key) {
+          if (!target.searchParams.has(key)) target.searchParams.append(key, value);
+        });
+        return target.toString();
+      }
+
+      function postHandshake() {
+        if (!frame || !frame.contentWindow) return;
+        try {
+          frame.contentWindow.postMessage({
+            type: 'GAS_WRAPPER_READY',
+            app: 'quotecard',
+            wrapperOrigin: window.location.origin,
+            version: 'gas-wrapper-v2'
+          }, expectedFrameOrigin || '*');
+        } catch (_) {}
+      }
+
+      function startHandshakeLoop() {
+        window.clearInterval(handshakeTimer);
+        handshakeDeadline = Date.now() + 10000;
+        window.clearTimeout(readyFallback);
+        readyFallback = window.setTimeout(function () {
+          if (document.body.dataset.gasFrameState === 'loading') setState('ready', '연결 완료');
+        }, 3500);
+        postHandshake();
+        handshakeTimer = window.setInterval(function () {
+          if (Date.now() > handshakeDeadline) {
+            window.clearInterval(handshakeTimer);
+            if (document.body.dataset.gasFrameState !== 'ready') setState('ready', '연결 완료');
+            return;
+          }
+          postHandshake();
+        }, 400);
+      }
+
+      function openGasUrl(gasUrl) {
+        if (!isAllowedGasUrl(gasUrl)) {
+          setState('setup', 'GAS URL 설정 필요');
+          if (input) input.value = gasUrl || '';
+          if (errorBox && gasUrl) errorBox.textContent = '유효한 Apps Script /exec URL을 입력하세요.';
+          return;
+        }
+        saveGasUrl(gasUrl);
+        setState('loading', 'GAS 앱 연결 중...');
+        if (errorBox) errorBox.textContent = '';
+        var nextFrameUrl = buildFrameUrl(gasUrl);
+        var frameOrigin = new URL(nextFrameUrl, window.location.href).origin;
+        expectedFrameOrigin = frameOrigin === 'null' ? '*' : frameOrigin;
+        frame.src = nextFrameUrl;
+        startHandshakeLoop();
+      }
+
+      frame.addEventListener('load', function () {
+        startHandshakeLoop();
+      });
+
+      window.addEventListener('message', function (event) {
+        if (event.source !== frame.contentWindow) return;
+        if (expectedFrameOrigin && expectedFrameOrigin !== '*' && event.origin !== expectedFrameOrigin) return;
+        var data = event.data || {};
+        if (data.type !== 'GAS_FRAME_VERIFIED') return;
+        window.clearInterval(handshakeTimer);
+        window.clearTimeout(readyFallback);
+        setState('ready', '연결 완료');
+      });
+
+      saveButton.addEventListener('click', function () {
+        openGasUrl(input.value.trim());
+      });
+
+      input.addEventListener('keydown', function (event) {
+        if (event.key === 'Enter') openGasUrl(input.value.trim());
+      });
+
+      if ('serviceWorker' in navigator) {
+        var refreshedByNewWorker = false;
+        navigator.serviceWorker.addEventListener('controllerchange', function () {
+          if (refreshedByNewWorker) return;
+          refreshedByNewWorker = true;
+          window.location.reload();
+        });
+        window.addEventListener('load', function () {
+          navigator.serviceWorker.register('./sw.js').then(function (registration) {
+            registration.update().catch(function () {});
+          }).catch(function () {});
+        });
+      }
+
+      openGasUrl(resolveGasUrl());
+    })();
+  </script>
+</body>
+</html>

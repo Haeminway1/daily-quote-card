@@ -1,0 +1,24 @@
+{
+  "id": "__WRAPPER_ORIGIN__/",
+  "name": "__APP_NAME__",
+  "short_name": "__SHORT_NAME__",
+  "description": "__APP_NAME__ GAS 웹앱 PWA 래퍼",
+  "start_url": "__WRAPPER_ORIGIN__/",
+  "scope": "__WRAPPER_ORIGIN__/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "__THEME_COLOR__",
+  "icons": [
+    {
+      "src": "./icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

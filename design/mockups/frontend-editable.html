@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>좋은생각카드 frontend editable mockup</title>
+  <style>
+    /*
+      좋은생각카드 frontend-editable.html
+
+      Edit order:
+      1. :root tokens
+      2. .deck-stage / .deck-card / .motion-card motion
+      3. .quote-card visual treatment
+      4. bottom sheets and prototype states
+
+      This file is standalone. Do not add CDN, remote fonts, or remote images.
+    */
+    :root {
+      --bg: #f4f7f3;
+      --surface: #ffffff;
+      --paper: #fff8da;
+      --paper-2: #fffdf3;
+      --paper-line: rgba(91, 72, 18, 0.11);
+      --ink: #121512;
+      --ink-soft: #333b35;
+      --muted: #657169;
+      --quiet: #e2e8e2;
+      --quiet-2: #eef3ef;
+      --accent: #f5c51b;
+      --accent-deep: #a87500;
+      --accent-ink: #251d00;
+      --teal: #147d70;
+      --coral: #d96342;
+      --danger: #b42318;
+      --focus: #0b5fff;
+      --radius-ui: 8px;
+      --radius-card: 18px;
+      --shadow-paper: 0 20px 34px rgba(31, 38, 26, 0.14), 0 4px 10px rgba(31, 38, 26, 0.08);
+      --shadow-shell: 0 24px 70px rgba(21, 31, 22, 0.18);
+      --ease-out: cubic-bezier(.16, 1, .3, 1);
+      --ease-back: cubic-bezier(.34, 1.45, .64, 1);
+      --font: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", "Segoe UI", sans-serif;
+      --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Noto Serif KR", "AppleMyungjo", Batang, serif;
+    }
+
+    * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+    html, body { min-height: 100%; }
+    body {
+      margin: 0;
+      background:
+        linear-gradient(180deg, rgba(245, 197, 27, 0.07), transparent 28%),
+        var(--bg);
+      color: var(--ink);
+      font-family: var(--font);
+      letter-spacing: 0;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    button, textarea, input {
+      font: inherit;
+      letter-spacing: 0;
+    }
+
+    .stage {
+      width: 100%;
+      min-height: 100dvh;
+      display: flex;
+      justify-content: center;
+      align-items: stretch;
+    }
+
+    .shell {
+      position: relative;
+      width: min(100%, 480px);
+      min-height: 100dvh;
+      background: var(--surface);
+      overflow: hidden;
+      padding: 16px 18px calc(18px + env(safe-area-inset-bottom));
+      display: grid;
+      grid-template-rows: auto minmax(278px, 42dvh) minmax(210px, 1fr) auto;
+    }
+
+    @media (min-width: 560px) {
+      .stage { padding: 28px 0; align-items: flex-start; }
+      .shell {
+        min-height: min(900px, calc(100dvh - 56px));
+        border-radius: 26px;
+        box-shadow: var(--shadow-shell);
+      }
+    }
+
+    .topbar {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 14px;
+      padding-top: env(safe-area-inset-top);
+    }
+
+    .eyebrow {
+      margin: 0 0 5px;
+      color: var(--teal);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .title {
+      margin: 0;
+      color: var(--ink);
+      font-size: 25px;
+      line-height: 1.18;
+      font-weight: 850;
+    }
+
+    .top-actions {
+      display: flex;
+      gap: 8px;
+      padding-top: 2px;
+    }
+
+    .icon-btn {
+      width: 44px;
+      height: 44px;
+      border: 1px solid var(--quiet);
+      border-radius: var(--radius-ui);
+      background: var(--surface);
+      color: var(--ink-soft);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+
+    .icon-btn:active { transform: translateY(1px) scale(.98); }
+    .icon-btn:focus-visible,
+    .deck-button:focus-visible,
+    .btn:focus-visible,
+    .proto-btn:focus-visible,
+    textarea:focus-visible,
+    input:focus-visible {
+      outline: 3px solid var(--focus);
+      outline-offset: 2px;
+    }
+
+    svg { width: 21px; height: 21px; }
+
+    .deck-stage {
+      position: relative;
+      display: grid;
+      place-items: center;
+      padding: 12px 0 2px;
+      overflow: hidden;
+    }
+
+    .deck-stage::before,
+    .deck-stage::after {
+      content: "";
+      position: absolute;
+      top: 14px;
+      bottom: 0;
+      width: 48px;
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    .deck-stage::before {
+      left: -1px;
+      background: linear-gradient(90deg, var(--surface), rgba(255,255,255,0));
+    }
+
+    .deck-stage::after {
+      right: -1px;
+      background: linear-gradient(270deg, var(--surface), rgba(255,255,255,0));
+    }
+
+    .deck-button {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      min-height: 260px;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      cursor: grab;
+      touch-action: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .deck-button.is-held { cursor: grabbing; }
+
+    .deck-card,
+    .motion-card {
+      position: absolute;
+      left: 50%;
+      top: 24px;
+      width: 168px;
+      height: 224px;
+      border-radius: var(--radius-card);
+      border: 1px solid rgba(91, 72, 18, 0.16);
+      background:
+        repeating-linear-gradient(0deg, transparent 0 21px, var(--paper-line) 21px 22px),
+        linear-gradient(180deg, var(--paper-2), var(--paper));
+      box-shadow: var(--shadow-paper);
+      display: grid;
+      place-items: center;
+      transform-origin: 50% 60%;
+      will-change: transform, opacity;
+    }
+
+    .deck-card::before,
+    .motion-card::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 18px;
+      bottom: 18px;
+      width: 5px;
+      border-radius: 0 5px 5px 0;
+      background: var(--accent);
+    }
+
+    .deck-card::after,
+    .motion-card::after {
+      content: "";
+      position: absolute;
+      inset: 13px;
+      border-top: 2px solid rgba(168, 117, 0, .42);
+      border-right: 2px solid rgba(168, 117, 0, .42);
+      border-radius: 12px 12px 0 0;
+      opacity: .85;
+    }
+
+    .deck-card span,
+    .motion-card span {
+      position: relative;
+      z-index: 1;
+      color: var(--ink);
+      font-size: 28px;
+      line-height: 1.08;
+      font-weight: 900;
+      text-align: center;
+    }
+
+    .deck-card small,
+    .motion-card small {
+      display: block;
+      margin-top: 10px;
+      color: var(--teal);
+      font-size: 11px;
+      font-weight: 850;
+    }
+
+    .deck-card:nth-child(1) { transform: translate(-142%, 18px) rotate(-13deg) scale(.87); opacity: .56; z-index: 1; }
+    .deck-card:nth-child(2) { transform: translate(-82%, 6px) rotate(-7deg) scale(.94); opacity: .78; z-index: 2; }
+    .deck-card:nth-child(3) { transform: translate(-50%, 0) rotate(0deg) scale(1); opacity: 1; z-index: 3; }
+    .deck-card:nth-child(4) { transform: translate(-18%, 8px) rotate(7deg) scale(.94); opacity: .76; z-index: 2; }
+    .deck-card:nth-child(5) { transform: translate(42%, 20px) rotate(13deg) scale(.87); opacity: .52; z-index: 1; }
+
+    .deck-button:active .deck-card:nth-child(3),
+    .deck-button.is-held .deck-card:nth-child(3) {
+      transform: translate(-50%, 7px) rotate(0deg) scale(.98);
+    }
+
+    .motion-card {
+      opacity: 0;
+      z-index: 9;
+      pointer-events: none;
+      transform: translate(-50%, 0) rotate(0) scale(1);
+    }
+
+    .motion-card.is-dragging {
+      opacity: 1;
+      transform: translate(calc(-50% + var(--drag-x, 0px)), var(--drag-y, 0px)) rotate(var(--drag-rotate, 0deg)) scale(var(--drag-scale, 1));
+      transition: none;
+    }
+
+    .motion-card.is-returning {
+      opacity: 1;
+      transform: translate(-50%, 0) rotate(0deg) scale(1);
+      transition: transform .42s var(--ease-back), opacity .18s ease;
+    }
+
+    .motion-card.is-flying {
+      opacity: 0;
+      transform: translate(-50%, 214px) rotate(0deg) scale(1.05);
+      transition: transform .46s var(--ease-out), opacity .26s ease .14s;
+    }
+
+    .deck-shadow {
+      position: absolute;
+      left: 50%;
+      bottom: 18px;
+      width: 188px;
+      height: 18px;
+      border-radius: 50%;
+      transform: translateX(-50%);
+      background: rgba(31, 38, 26, .10);
+      filter: blur(6px);
+    }
+
+    .result {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      min-height: 0;
+      padding-bottom: 10px;
+    }
+
+    .ready-state {
+      margin: auto 0 14px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.55;
+      font-weight: 750;
+    }
+
+    .ready-state strong {
+      display: block;
+      margin-top: 6px;
+      color: var(--ink);
+      font-size: 17px;
+    }
+
+    .quote-card {
+      position: relative;
+      max-height: min(54dvh, 460px);
+      overflow: auto;
+      border-radius: var(--radius-card);
+      border: 1px solid rgba(91, 72, 18, 0.16);
+      background:
+        repeating-linear-gradient(0deg, transparent 0 23px, var(--paper-line) 23px 24px),
+        linear-gradient(180deg, var(--paper-2), var(--paper));
+      box-shadow: var(--shadow-paper);
+      padding: 30px 24px 22px;
+      transform: translateY(18px);
+      opacity: 0;
+    }
+
+    .quote-card.is-visible {
+      animation: quoteSettle .42s var(--ease-back) both;
+    }
+
+    .quote-card::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 24px;
+      bottom: 24px;
+      width: 5px;
+      border-radius: 0 5px 5px 0;
+      background: var(--accent);
+    }
+
+    .quote-kicker {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 850;
+    }
+
+    .quote-source-badge {
+      flex: 0 0 auto;
+      border-radius: 999px;
+      background: rgba(20, 125, 112, .1);
+      color: var(--teal);
+      padding: 4px 8px;
+    }
+
+    .quote-text {
+      margin: 0;
+      color: #1d211d;
+      font-family: var(--serif);
+      font-size: clamp(19px, 6vw, 24px);
+      line-height: 1.58;
+      font-weight: 650;
+      word-break: keep-all;
+      overflow-wrap: anywhere;
+    }
+
+    .quote-card[data-density="long"] .quote-text { font-size: 18px; line-height: 1.58; }
+    .quote-card[data-density="dense"] .quote-text { font-size: 16px; line-height: 1.55; }
+
+    .quote-author {
+      margin: 18px 0 0;
+      color: var(--muted);
+      text-align: right;
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .quote-author::before { content: "- "; }
+
+    .action-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 9px;
+      padding-top: 12px;
+    }
+
+    .btn {
+      min-height: 48px;
+      border: 1px solid transparent;
+      border-radius: var(--radius-ui);
+      cursor: pointer;
+      font-weight: 850;
+      color: var(--ink);
+      background: var(--quiet-2);
+    }
+
+    .btn.primary {
+      background: var(--accent);
+      color: var(--accent-ink);
+      box-shadow: 0 10px 18px rgba(168, 117, 0, .18);
+    }
+
+    .btn.secondary {
+      background: var(--surface);
+      border-color: var(--quiet);
+      color: var(--ink-soft);
+    }
+
+    .btn:active { transform: translateY(1px) scale(.99); }
+
+    .sheet-root {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+    }
+
+    .backdrop {
+      position: absolute;
+      inset: 0;
+      background: rgba(16, 21, 18, .42);
+      opacity: 0;
+      transition: opacity .24s ease;
+    }
+
+    .sheet-root.open .backdrop { opacity: 1; }
+
+    .sheet {
+      position: absolute;
+      left: 50%;
+      bottom: 0;
+      width: min(100%, 480px);
+      max-height: 88dvh;
+      overflow: auto;
+      transform: translate(-50%, 100%);
+      border-radius: 22px 22px 0 0;
+      background: var(--surface);
+      padding: 10px 18px calc(22px + env(safe-area-inset-bottom));
+      box-shadow: 0 -18px 40px rgba(16, 21, 18, .22);
+      transition: transform .36s var(--ease-out);
+    }
+
+    .sheet-root.open .sheet { transform: translate(-50%, 0); }
+
+    .grabber {
+      width: 40px;
+      height: 5px;
+      margin: 6px auto 14px;
+      border-radius: 999px;
+      background: var(--quiet);
+    }
+
+    .sheet h2 {
+      margin: 0 0 4px;
+      font-size: 20px;
+      line-height: 1.25;
+    }
+
+    .sheet .sub {
+      margin: 0 0 18px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 1.5;
+    }
+
+    .field { margin-bottom: 12px; }
+    .field label {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 7px;
+      color: var(--ink-soft);
+      font-size: 13px;
+      font-weight: 850;
+    }
+
+    .field textarea,
+    .field input {
+      width: 100%;
+      border: 1px solid transparent;
+      border-radius: var(--radius-ui);
+      background: var(--quiet-2);
+      color: var(--ink);
+      padding: 13px 12px;
+      resize: none;
+      line-height: 1.5;
+    }
+
+    .field textarea { min-height: 104px; }
+    .field.error textarea { border-color: var(--danger); background: #fff2ef; }
+    .err-msg {
+      display: none;
+      margin: 7px 0 0;
+      color: var(--danger);
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .field.error .err-msg { display: block; }
+
+    .sheet-actions {
+      display: grid;
+      grid-template-columns: .8fr 1fr;
+      gap: 9px;
+      margin-top: 18px;
+    }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      top: calc(16px + env(safe-area-inset-top));
+      z-index: 30;
+      transform: translate(-50%, -18px);
+      opacity: 0;
+      pointer-events: none;
+      background: var(--ink);
+      color: #fff;
+      border-radius: var(--radius-ui);
+      padding: 11px 14px;
+      font-size: 13px;
+      font-weight: 850;
+      box-shadow: 0 14px 28px rgba(16, 21, 18, .28);
+      transition: transform .28s var(--ease-back), opacity .18s ease;
+    }
+
+    .toast.show {
+      transform: translate(-50%, 0);
+      opacity: 1;
+    }
+
+    .prototype-tools {
+      position: fixed;
+      left: 50%;
+      bottom: 12px;
+      z-index: 40;
+      width: min(calc(100% - 24px), 460px);
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 6px;
+      padding: 7px;
+      border: 1px solid rgba(101, 113, 105, .22);
+      border-radius: 12px;
+      background: rgba(255,255,255,.92);
+      box-shadow: 0 10px 28px rgba(16, 21, 18, .14);
+      transform: translateX(-50%);
+      backdrop-filter: blur(8px);
+    }
+
+    .proto-btn {
+      min-height: 34px;
+      border: 0;
+      border-radius: 7px;
+      background: var(--quiet-2);
+      color: var(--ink-soft);
+      font-size: 11px;
+      font-weight: 850;
+      cursor: pointer;
+    }
+
+    .proto-btn.is-active {
+      background: var(--teal);
+      color: #fff;
+    }
+
+    .vh {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      margin: -1px;
+      padding: 0;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    @keyframes quoteSettle {
+      from { opacity: 0; transform: translateY(20px) scale(.985); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    @media (max-height: 720px) {
+      .shell { grid-template-rows: auto minmax(236px, 38dvh) minmax(190px, 1fr) auto; }
+      .deck-card,
+      .motion-card { width: 150px; height: 200px; }
+      .quote-card { padding: 24px 22px 18px; }
+      .prototype-tools { display: none; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        animation-duration: .001ms !important;
+        transition-duration: .001ms !important;
+        scroll-behavior: auto !important;
+      }
+      .motion-card.is-flying {
+        transform: translate(-50%, 0);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="stage">
+    <main class="shell" data-test-id="app-shell" aria-label="좋은생각카드">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">오늘의 카드</p>
+          <h1 class="title">좋은생각카드</h1>
+        </div>
+        <div class="top-actions">
+          <button class="icon-btn" type="button" aria-label="메모 달력" data-test-id="memo-calendar" data-open-sheet="calendar">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="17" rx="3"></rect><path d="M8 2v4M16 2v4M3 9h18"></path></svg>
+          </button>
+          <button class="icon-btn" type="button" aria-label="명언 추가" data-test-id="add-quote" data-open-sheet="add">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
+          </button>
+        </div>
+      </header>
+
+      <section class="deck-stage" aria-label="카드 뽑기 영역">
+        <button class="deck-button" id="deckButton" type="button" data-test-id="quote-deck" aria-label="명언 카드 뽑기">
+          <span class="deck-shadow" aria-hidden="true"></span>
+          <span class="deck-card" aria-hidden="true"><span>좋은<br>생각<small>오늘의 카드</small></span></span>
+          <span class="deck-card" aria-hidden="true"><span>좋은<br>생각<small>오늘의 카드</small></span></span>
+          <span class="deck-card" aria-hidden="true"><span>좋은<br>생각<small>오늘의 카드</small></span></span>
+          <span class="deck-card" aria-hidden="true"><span>좋은<br>생각<small>오늘의 카드</small></span></span>
+          <span class="deck-card" aria-hidden="true"><span>좋은<br>생각<small>오늘의 카드</small></span></span>
+          <span class="motion-card" id="motionCard" aria-hidden="true"><span>좋은<br>생각<small>오늘의 카드</small></span></span>
+        </button>
+      </section>
+
+      <section class="result" id="resultArea">
+        <div class="ready-state" id="readyState">
+          오늘의 카드 준비됨
+          <strong>한 장을 뽑아보세요</strong>
+        </div>
+
+        <article class="quote-card" id="quoteCard" data-test-id="quote-card" data-state="ready" data-density="normal" hidden>
+          <div class="quote-kicker">
+            <span id="quoteLabel">펼쳐진 카드</span>
+            <span class="quote-source-badge" id="quoteBadge">기본 덱</span>
+          </div>
+          <p class="quote-text" id="quoteText" data-test-id="quote-text"></p>
+          <p class="quote-author" id="quoteAuthor" data-test-id="quote-author"></p>
+        </article>
+      </section>
+
+      <div class="action-row">
+        <button class="btn primary" type="button" id="drawAgain" data-test-id="draw-again">다시 뽑기</button>
+        <button class="btn secondary" type="button" id="memoOpen" data-test-id="memo-open">내 생각 메모</button>
+      </div>
+
+      <div class="vh" id="live" data-test-id="quote-announcement" aria-live="polite" role="status"></div>
+    </main>
+  </div>
+
+  <div class="sheet-root" id="addSheet" hidden>
+    <div class="backdrop" data-close-sheet></div>
+    <section class="sheet" role="dialog" aria-modal="true" aria-labelledby="addTitle">
+      <div class="grabber"></div>
+      <h2 id="addTitle">명언 추가</h2>
+      <p class="sub">이 기기에만 저장되는 나만의 카드를 더합니다.</p>
+      <div class="field" id="quoteField">
+        <label for="addQuoteText">명언 <span id="quoteCount">0/120</span></label>
+        <textarea id="addQuoteText" data-test-id="add-quote-text" maxlength="120" placeholder="마음에 남은 문장을 적어주세요."></textarea>
+        <p class="err-msg">명언 내용을 입력해주세요.</p>
+      </div>
+      <div class="field">
+        <label for="addQuoteAuthor">작가 또는 출처 <span>선택</span></label>
+        <input id="addQuoteAuthor" data-test-id="add-quote-author" maxlength="40" placeholder="비워두면 미상으로 저장됩니다.">
+      </div>
+      <div class="sheet-actions">
+        <button class="btn secondary" type="button" data-close-sheet>취소</button>
+        <button class="btn primary" type="button" id="saveQuote" data-test-id="save-quote">추가</button>
+      </div>
+    </section>
+  </div>
+
+  <div class="sheet-root" id="memoSheet" hidden>
+    <div class="backdrop" data-close-sheet></div>
+    <section class="sheet" role="dialog" aria-modal="true" aria-labelledby="memoTitle">
+      <div class="grabber"></div>
+      <h2 id="memoTitle">내 생각 메모</h2>
+      <p class="sub">방금 뽑은 카드에 남길 짧은 기록입니다.</p>
+      <div class="field">
+        <label for="memoText">내 생각 <span>0/300</span></label>
+        <textarea id="memoText" data-test-id="memo-text" maxlength="300" placeholder="떠오른 생각을 적어주세요."></textarea>
+      </div>
+      <div class="sheet-actions">
+        <button class="btn secondary" type="button" data-close-sheet>취소</button>
+        <button class="btn primary" type="button" data-close-sheet>저장</button>
+      </div>
+    </section>
+  </div>
+
+  <div class="sheet-root" id="calendarSheet" hidden>
+    <div class="backdrop" data-close-sheet></div>
+    <section class="sheet" role="dialog" aria-modal="true" aria-labelledby="calendarTitle">
+      <div class="grabber"></div>
+      <h2 id="calendarTitle">메모 달력</h2>
+      <p class="sub">프론트 디자인 확인용 달력 상태입니다.</p>
+      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:12px">
+        <button class="btn secondary" style="min-height:42px">1</button>
+        <button class="btn secondary" style="min-height:42px">2</button>
+        <button class="btn primary" style="min-height:42px">3</button>
+        <button class="btn secondary" style="min-height:42px">4</button>
+        <button class="btn secondary" style="min-height:42px">5</button>
+        <button class="btn secondary" style="min-height:42px">6</button>
+        <button class="btn secondary" style="min-height:42px">7</button>
+      </div>
+    </section>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite">명언이 덱에 추가됐어요</div>
+
+  <nav class="prototype-tools" aria-label="프로토타입 상태 전환">
+    <button class="proto-btn is-active" type="button" data-state="ready">ready</button>
+    <button class="proto-btn" type="button" data-state="revealed">quote</button>
+    <button class="proto-btn" type="button" data-state="long">long</button>
+    <button class="proto-btn" type="button" data-state="custom">custom</button>
+  </nav>
+
+  <script>
+    (function () {
+      var quotes = [
+        { text: "작은 시작이 가장 큰 용기다.", author: "미상", source: "기본 덱" },
+        { text: "오늘 할 수 있는 친절을 내일로 미루지 않는다.", author: "좋은생각", source: "기본 덱" },
+        { text: "마음이 흔들릴 때는 오래 버티는 일보다 지금 숨을 고르는 일이 먼저다. 작은 평정을 회복하면 다음 선택은 조금 더 선명해진다.", author: "미상", source: "기본 덱" },
+        { text: "내가 자주 돌아오고 싶은 문장을 직접 덱에 넣어둔다.", author: "나의 카드", source: "내 명언", custom: true }
+      ];
+
+      var deck = document.getElementById("deckButton");
+      var motion = document.getElementById("motionCard");
+      var ready = document.getElementById("readyState");
+      var quoteCard = document.getElementById("quoteCard");
+      var quoteText = document.getElementById("quoteText");
+      var quoteAuthor = document.getElementById("quoteAuthor");
+      var quoteBadge = document.getElementById("quoteBadge");
+      var live = document.getElementById("live");
+      var toast = document.getElementById("toast");
+      var quoteField = document.getElementById("quoteField");
+      var addQuoteText = document.getElementById("addQuoteText");
+      var quoteCount = document.getElementById("quoteCount");
+      var lastIndex = -1;
+      var dragging = false;
+      var startY = 0;
+      var startX = 0;
+      var dy = 0;
+
+      function setPrototypeButton(state) {
+        document.querySelectorAll(".proto-btn").forEach(function (button) {
+          button.classList.toggle("is-active", button.dataset.state === state);
+        });
+      }
+
+      function density(text) {
+        if (text.length > 105) return "dense";
+        if (text.length > 62) return "long";
+        return "normal";
+      }
+
+      function reveal(index, stateName) {
+        var quote = quotes[index];
+        ready.hidden = true;
+        quoteCard.hidden = false;
+        quoteCard.dataset.state = "revealed";
+        quoteCard.dataset.density = density(quote.text);
+        quoteText.textContent = quote.text;
+        quoteAuthor.textContent = quote.author || "미상";
+        quoteBadge.textContent = quote.source;
+        quoteBadge.style.background = quote.custom ? "rgba(217, 99, 66, .12)" : "rgba(20, 125, 112, .10)";
+        quoteBadge.style.color = quote.custom ? "var(--coral)" : "var(--teal)";
+        quoteCard.classList.remove("is-visible");
+        void quoteCard.offsetWidth;
+        quoteCard.classList.add("is-visible");
+        live.textContent = "새 카드: " + quote.text + " - " + (quote.author || "미상");
+        setPrototypeButton(stateName || (quote.custom ? "custom" : "revealed"));
+      }
+
+      function resetReady() {
+        quoteCard.hidden = true;
+        quoteCard.classList.remove("is-visible");
+        quoteCard.dataset.state = "ready";
+        ready.hidden = false;
+        motion.className = "motion-card";
+        deck.classList.remove("is-held");
+        setPrototypeButton("ready");
+      }
+
+      function pickIndex(preferred) {
+        if (typeof preferred === "number") return preferred;
+        if (quotes.length < 2) return 0;
+        var next = Math.floor(Math.random() * quotes.length);
+        if (next === lastIndex) next = (next + 1) % quotes.length;
+        lastIndex = next;
+        return next;
+      }
+
+      function draw(preferred, stateName) {
+        deck.classList.add("is-held");
+        motion.className = "motion-card is-dragging";
+        motion.style.setProperty("--drag-y", "0px");
+        motion.style.setProperty("--drag-x", "0px");
+        motion.style.setProperty("--drag-rotate", "0deg");
+        motion.style.setProperty("--drag-scale", "1");
+        window.setTimeout(function () {
+          motion.className = "motion-card is-flying";
+        }, 40);
+        window.setTimeout(function () {
+          deck.classList.remove("is-held");
+          motion.className = "motion-card";
+          reveal(pickIndex(preferred), stateName);
+        }, 520);
+      }
+
+      function openSheet(id) {
+        var root = document.getElementById(id + "Sheet");
+        if (!root) return;
+        root.hidden = false;
+        void root.offsetWidth;
+        root.classList.add("open");
+        var first = root.querySelector("textarea, input, button");
+        window.setTimeout(function () { if (first) first.focus(); }, 120);
+      }
+
+      function closeSheet(root) {
+        root.classList.remove("open");
+        window.setTimeout(function () { root.hidden = true; }, 260);
+      }
+
+      function showToast() {
+        toast.classList.add("show");
+        window.clearTimeout(showToast.timer);
+        showToast.timer = window.setTimeout(function () { toast.classList.remove("show"); }, 1900);
+      }
+
+      deck.addEventListener("click", function () {
+        if (!dragging) draw();
+      });
+
+      deck.addEventListener("keydown", function (event) {
+        if (event.key === "Enter" || event.key === " " || event.key === "Spacebar") {
+          event.preventDefault();
+          draw();
+        }
+      });
+
+      deck.addEventListener("pointerdown", function (event) {
+        dragging = true;
+        dy = 0;
+        startY = event.clientY;
+        startX = event.clientX;
+        deck.classList.add("is-held");
+        motion.className = "motion-card is-dragging";
+        if (deck.setPointerCapture) deck.setPointerCapture(event.pointerId);
+      });
+
+      window.addEventListener("pointermove", function (event) {
+        if (!dragging) return;
+        var rawY = event.clientY - startY;
+        var rawX = event.clientX - startX;
+        dy = Math.max(0, rawY);
+        motion.style.setProperty("--drag-y", dy + "px");
+        motion.style.setProperty("--drag-x", Math.max(-18, Math.min(18, rawX * .2)) + "px");
+        motion.style.setProperty("--drag-rotate", Math.max(-4, Math.min(4, rawX * .05)) + "deg");
+        motion.style.setProperty("--drag-scale", String(1 + Math.min(.045, dy / 1800)));
+        if (dy > 0 && event.cancelable) event.preventDefault();
+      }, { passive: false });
+
+      window.addEventListener("pointerup", function () {
+        if (!dragging) return;
+        dragging = false;
+        deck.classList.remove("is-held");
+        if (dy >= 62) {
+          motion.className = "motion-card is-flying";
+          window.setTimeout(function () {
+            motion.className = "motion-card";
+            reveal(pickIndex());
+          }, 420);
+          return;
+        }
+        motion.className = "motion-card is-returning";
+        window.setTimeout(function () { motion.className = "motion-card"; }, 360);
+      });
+
+      document.getElementById("drawAgain").addEventListener("click", function () { draw(); });
+      document.getElementById("memoOpen").addEventListener("click", function () { openSheet("memo"); });
+
+      document.querySelectorAll("[data-open-sheet]").forEach(function (button) {
+        button.addEventListener("click", function () { openSheet(button.dataset.openSheet); });
+      });
+
+      document.querySelectorAll("[data-close-sheet]").forEach(function (button) {
+        button.addEventListener("click", function () { closeSheet(button.closest(".sheet-root")); });
+      });
+
+      addQuoteText.addEventListener("input", function () {
+        quoteCount.textContent = addQuoteText.value.length + "/120";
+        if (addQuoteText.value.trim()) quoteField.classList.remove("error");
+      });
+
+      document.getElementById("saveQuote").addEventListener("click", function () {
+        if (!addQuoteText.value.trim()) {
+          quoteField.classList.add("error");
+          addQuoteText.focus();
+          return;
+        }
+        closeSheet(document.getElementById("addSheet"));
+        showToast();
+        reveal(3, "custom");
+      });
+
+      document.querySelectorAll(".proto-btn").forEach(function (button) {
+        button.addEventListener("click", function () {
+          var state = button.dataset.state;
+          if (state === "ready") resetReady();
+          if (state === "revealed") draw(1, "revealed");
+          if (state === "long") draw(2, "long");
+          if (state === "custom") draw(3, "custom");
+        });
+      });
+
+      resetReady();
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,24 @@
+node_modules/
+playwright-report/
+test-results/
+.env
+.env.*
+.clasprc.json
+
+# Local customer materials and generated runtime state
+data/client-provided/
+_artifacts/
+.debug-artifacts/
+cache/
+clasp/
+export/
+build/
+.clasp.json
+.deployment-id
+.deployment-id.staging
+.deployment-id.prod
+.deployment-prev.prod
+.webapp-url
+.webapp-url.staging
+.webapp-url.prod
+.wrapper-url

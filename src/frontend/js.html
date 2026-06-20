@@ -1,0 +1,528 @@
+<script>
+(function () {
+  function updateMobileViewportStatus() {
+    const shell = document.querySelector('[data-test-id="app-shell"]');
+    const shellWidth = shell ? Math.round(shell.getBoundingClientRect().width) : 0;
+    const overflow = Math.max(0, document.documentElement.scrollWidth - window.innerWidth);
+    document.body.dataset.mobileViewportStatus =
+      overflow <= 1 && shellWidth <= Math.min(480, window.innerWidth + 1) ? 'pass' : 'fail';
+  }
+  window.updateMobileViewportStatus = updateMobileViewportStatus;
+  window.addEventListener('resize', updateMobileViewportStatus);
+  document.addEventListener('DOMContentLoaded', updateMobileViewportStatus);
+})();
+</script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+(function(){
+  "use strict";
+
+  /* ===================== data ===================== */
+  var BASE_QUOTES = Array.isArray(window.QUOTE_DECK) ? window.QUOTE_DECK.map(function(q){
+    return { id:q.id, t:q.text, a:q.author, source:"default" };
+  }) : [];
+  var QUOTES = BASE_QUOTES.length ? BASE_QUOTES.slice() : [
+    {id:"fallback-001", t:"작은 시작이 가장 큰 용기다.", a:"미상", source:"fallback"}
+  ];
+
+  var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var testHook = window.GOOD_THOUGHT_CARD_TEST = window.GOOD_THOUGHT_CARD_TEST || {};
+  function seededRandom(seed){
+    var state = Number.isFinite(seed) ? Math.trunc(seed) : 0;
+    state = (state >>> 0) || 1;
+    return function(){ state = (state * 1664525 + 1013904223) >>> 0; return state / 4294967296; };
+  }
+  var random = Number.isFinite(Number(testHook.seed)) ? seededRandom(Number(testHook.seed)) : Math.random;
+
+  /* ---- storage (localStorage, graceful fallback) ---- */
+  var MEMO_KEY="jotcard.memos.v1", QKEY="jotcard.quotes.v1";
+  function lsGet(k){ try{ return JSON.parse(window.localStorage.getItem(k)||"null"); }catch(e){ return null; } }
+  function lsSet(k,v){ try{ window.localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+  var memos = lsGet(MEMO_KEY) || [];
+  var customQuotes = lsGet(QKEY) || [];
+  customQuotes.forEach(function(c,i){ QUOTES.push({id:c.id || ("custom-"+(i+1)), t:c.t, a:c.a, custom:true, source:"local"}); });
+
+  /* ---- date helpers ---- */
+  var WD=["일","월","화","수","목","금","토"];
+  function pad(n){ return n<10?"0"+n:""+n; }
+  function keyOf(d){ return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate()); }
+  function fmtFull(d){ return d.getFullYear()+"년 "+(d.getMonth()+1)+"월 "+d.getDate()+"일 ("+WD[d.getDay()]+")"; }
+  function fmtTime(d){ var h=d.getHours(),ap=h<12?"오전":"오후",hh=h%12; if(hh===0)hh=12; return ap+" "+hh+":"+pad(d.getMinutes()); }
+
+  /* ===================== elements ===================== */
+  var deck=document.getElementById("deck"), belt=document.getElementById("belt"), drawCard=document.getElementById("drawCard");
+  var deckArea=deck?deck.closest(".deck-area"):null;
+  var hint=document.getElementById("hint"), ready=document.getElementById("ready");
+  var quoteCard=document.getElementById("quoteCard"), quoteText=document.getElementById("quoteText"), quoteAuthor=document.getElementById("quoteAuthor");
+  var quoteDismiss=document.getElementById("quoteDismiss"), result=document.getElementById("result");
+  var memoCta=document.getElementById("memoCta"), live=document.getElementById("live");
+
+  /* ===================== belt geometry ===================== */
+  var N=7, CARD_W=178, CARD_H=240, GAP=124, SPAN=N*GAP, TRACK_OFFSET=GAP/2, BASE_TOP=36, ARC_H=22, MAX_TILT=14;
+  var SPEED = reduce ? 0 : 26;        // px / second
+  var THRESHOLD = 120;
+  var cards=[], cx=0, HALF=0;
+  function measure(){
+    cx=deck.clientWidth/2; HALF=cx;
+    ARC_H=(HALF*Math.tan(MAX_TILT*Math.PI/180))/2;
+  }
+  function cardInner(){
+    return '<span class="spine"></span><span class="corner tl"></span><span class="corner br"></span>'+
+           '<span class="mark">좋은<br>생각<small>오늘의 카드</small></span>';
+  }
+  function buildDeck(){
+    belt.innerHTML=""; cards=[];
+    for(var i=0;i<N;i++){ var c=document.createElement("div"); c.className="card belt-card"; c.innerHTML=cardInner(); belt.appendChild(c); cards.push(c); }
+    drawCard.innerHTML=cardInner();
+  }
+  function clamp(v,a,b){ return v<a?a:(v>b?b:v); }
+  function beltX(i){ var raw=i*GAP+pos+TRACK_OFFSET; return ((raw%SPAN)+SPAN)%SPAN - SPAN/2; }
+  function styleFor(x){
+    var u=HALF?x/HALF:0;
+    var y=BASE_TOP+ARC_H*Math.min(1,u*u);
+    var tilt=clamp(u*MAX_TILT,-MAX_TILT,MAX_TILT);
+    var scale=Math.max(0.86,1-Math.abs(u)*0.08);
+    var dist=Math.abs(x), edge=HALF*0.72;
+    var op=dist<=edge?1:Math.max(0,1-(dist-edge)/(HALF*0.55));
+    var z=Math.round(1000+x);
+    return {x:x,y:y,tilt:tilt,scale:scale,op:op,z:z};
+  }
+  function composeTransform(s,extra){
+    return "translate("+(cx+s.x-CARD_W/2)+"px,"+s.y+"px) rotate("+s.tilt+"deg) scale("+s.scale+")"+(extra||"");
+  }
+  function apply(el,s,op){
+    el.style.transform=composeTransform(s);
+    el.style.opacity=(op==null?s.op:op);
+    if(s.z!=null) el.style.zIndex=s.z;
+  }
+
+  /* ===================== belt loop ===================== */
+  var pos=0, spinning=true, holding=false, drawing=false, centerIdx=0, lastT=0;
+  function nearestCenter(){ var b=0,bd=1e9; for(var i=0;i<N;i++){var d=Math.abs(beltX(i)); if(d<bd){bd=d;b=i;}} return b; }
+  function tick(){
+    var now=(window.performance&&performance.now)?performance.now():Date.now();
+    if(!lastT) lastT=now;
+    var dt=Math.min(0.05,(now-lastT)/1000); lastT=now;
+    if(spinning&&!holding){ pos-=SPEED*dt; if(pos<-SPAN) pos+=SPAN; }
+    for(var i=0;i<N;i++){ if(holding&&i===centerIdx) continue; apply(cards[i],styleFor(beltX(i))); }
+  }
+
+  /* ===================== grab / draw ===================== */
+  var base=null;
+  function eventPoint(e){
+    var p=e.touches&&e.touches[0]?e.touches[0]:e;
+    return {x:p.clientX,y:p.clientY};
+  }
+  function cardAtPoint(clientX,clientY){
+    var rect=deck.getBoundingClientRect(), x=clientX-rect.left, y=clientY-rect.top;
+    var best=-1, score=1e9;
+    for(var i=0;i<N;i++){
+      var s=styleFor(beltX(i));
+      if(s.op<0.2) continue;
+      var left=cx+s.x-CARD_W/2, top=s.y, padX=10, padY=8;
+      if(x<left-padX||x>left+CARD_W+padX||y<top-padY||y>top+CARD_H+padY) continue;
+      var dx=Math.abs(x-(left+CARD_W/2)), dy=Math.abs(y-(top+CARD_H/2))*0.25;
+      var next=dx+dy+(1-s.op)*90;
+      if(next<score){ score=next; best=i; }
+    }
+    return best;
+  }
+  function grabCard(idx,source){
+    spinning=false; holding=true; centerIdx=idx==null?nearestCenter():idx;
+    if(deckArea) deckArea.classList.add("is-drawing");
+    base=styleFor(beltX(centerIdx));
+    for(var i=0;i<N;i++){ apply(cards[i],styleFor(beltX(i))); }
+    cards[centerIdx].style.opacity="0";
+    apply(drawCard,base,1); drawCard.style.zIndex="3000"; drawCard.style.transition="none"; drawCard.style.opacity="1";
+    testHook.lastGrabIndex=centerIdx;
+    testHook.lastGrabX=Math.round(base.x);
+    testHook.lastGrabSource=source||"keyboard";
+  }
+  function releaseCenter(){
+    holding=false; drawCard.style.opacity="0"; spinning=true;
+    if(deckArea) deckArea.classList.remove("is-drawing");
+  }
+  var dragging=false,startY=0,curDy=0,moved=0,pointerId=null,armed=false;
+  function setHeld(on){ deck.classList.toggle("is-held",on); }
+  function onDown(e){
+    if(drawing) return;
+    var point=eventPoint(e), hit=cardAtPoint(point.x,point.y);
+    if(hit<0){ testHook.lastDeckMiss=true; return; }
+    dragging=true; armed=false; moved=0; curDy=0;
+    startY=point.y; pointerId=e.pointerId;
+    if(e.pointerId!=null&&deck.setPointerCapture){ try{deck.setPointerCapture(e.pointerId);}catch(_){} }
+    setHeld(true); grabCard(hit,"pointer"); setHint("hold");
+  }
+  function onMove(e){
+    if(!dragging) return;
+    var y=(e.touches?e.touches[0].clientY:e.clientY), dy=y-startY;
+    moved=Math.max(moved,Math.abs(dy));
+    if(dy<0) dy=dy*0.26; curDy=dy;
+    var p=clamp(dy/THRESHOLD,0,1);
+    apply(drawCard,{x:base.x*(1-p),y:base.y+dy,tilt:base.tilt*(1-p),scale:base.scale+p*0.05,z:3000},1);
+    if(dy>=THRESHOLD&&!armed){ armed=true; setHint("release"); buzz(); }
+    else if(dy<THRESHOLD&&armed){ armed=false; setHint("hold"); }
+    if(e.cancelable) e.preventDefault();
+  }
+  function onUp(){
+    if(!dragging) return;
+    dragging=false; setHeld(false);
+    if(pointerId!=null&&deck.releasePointerCapture){ try{deck.releasePointerCapture(pointerId);}catch(_){} }
+    if(curDy>=THRESHOLD){ doDraw(); }
+    else{
+      setHint("idle");
+      if(reduce){ releaseCenter(); return; }
+      drawCard.style.transition="transform .5s var(--ease-back), opacity .3s ease";
+      apply(drawCard,base,1);
+      setTimeout(releaseCenter,360);
+    }
+  }
+
+  var lastIndex=-1, lastQuoteId="", quoteBag=[];
+  function quoteIdAt(idx){
+    var q=QUOTES[idx];
+    if(!q) return "";
+    return q.id || (q.custom ? "custom-"+idx : "quote-"+idx);
+  }
+  function shuffledQuoteBag(){
+    var indices=[];
+    for(var i=0;i<QUOTES.length;i++) indices.push(i);
+    for(var j=indices.length-1;j>0;j--){
+      var k=Math.floor(random()*(j+1)), tmp=indices[j];
+      indices[j]=indices[k]; indices[k]=tmp;
+    }
+    if(indices.length>1 && quoteIdAt(indices[0])===lastQuoteId){
+      for(var n=1;n<indices.length;n++){
+        if(quoteIdAt(indices[n])!==lastQuoteId){
+          var first=indices[0]; indices[0]=indices[n]; indices[n]=first;
+          break;
+        }
+      }
+    }
+    return indices;
+  }
+  function forcedQuoteIndex(){
+    var forcedId=testHook.forceQuoteId || testHook.nextQuoteId || "";
+    if(!forcedId) return -1;
+    testHook.forceQuoteId="";
+    testHook.nextQuoteId="";
+    for(var i=0;i<QUOTES.length;i++){
+      if(quoteIdAt(i)===forcedId) return i;
+    }
+    return -1;
+  }
+  function pickQuote(){
+    if(QUOTES.length===1) return 0;
+    var forced=forcedQuoteIndex();
+    if(forced>=0){
+      quoteBag=quoteBag.filter(function(idx){ return idx!==forced; });
+      lastIndex=forced;
+      return forced;
+    }
+    if(!quoteBag.length) quoteBag=shuffledQuoteBag();
+    var idx=quoteBag.shift();
+    if(quoteBag.length && quoteIdAt(idx)===lastQuoteId){
+      var next=quoteBag.shift();
+      quoteBag.unshift(idx);
+      idx=next;
+    }
+    lastIndex=idx;
+    return idx;
+  }
+  function drawTarget(){
+    var shell=deck.closest(".shell"), shellRect=shell?shell.getBoundingClientRect():deck.getBoundingClientRect();
+    var deckRect=deck.getBoundingClientRect();
+    var shellCenterY=shellRect.height*.5;
+    var y=shellCenterY-(deckRect.top-shellRect.top)-CARD_H/2;
+    var scale=clamp((deck.clientWidth-62)/CARD_W,.98,1.48);
+    return {x:0,y:y,tilt:-2,scale:scale,z:3500};
+  }
+
+  function doDraw(){
+    if(drawing) return;
+    if(!holding) grabCard(null,"keyboard");
+    drawing=true; setHint("idle");
+    var idx=pickQuote();
+    if(reduce){
+      reveal(idx); releaseCenter(); drawing=false; return;
+    }
+    deck.classList.add("is-background");
+    var target=drawTarget();
+    var revealed=false;
+    function showQuote(){ if(revealed) return; revealed=true; reveal(idx); }
+    var done=false;
+    function finish(){
+      if(done) return; done=true;
+      showQuote(); releaseCenter(); drawing=false;
+    }
+    drawCard.style.zIndex="3500";
+    drawCard.style.opacity="1";
+    drawCard.style.transition="transform .54s var(--ease-expo), opacity .18s ease";
+    window.setTimeout(function(){ apply(drawCard,target,1); },0);
+    window.setTimeout(function(){
+      drawCard.style.transition="transform .3s cubic-bezier(.32,0,.24,1), opacity .18s ease";
+      drawCard.style.transform=composeTransform(target," rotateY(88deg)");
+      drawCard.style.opacity=".24";
+    },520);
+    window.setTimeout(function(){
+      showQuote();
+      drawCard.style.opacity="0";
+    },640);
+    window.setTimeout(finish,940);
+  }
+
+  var currentQuote={t:"",a:""};
+  function reveal(idx){
+    var q=QUOTES[idx];
+    var drawId = quoteIdAt(idx);
+    currentQuote={t:q.t,a:(q.a&&q.a.trim()&&q.a!=="Unknown")?q.a.trim():"미상"};
+    lastQuoteId=drawId;
+    testHook.lastDrawId = drawId;
+    testHook.drawCount = (testHook.drawCount || 0) + 1;
+    quoteCard.dataset.state = "revealed";
+    quoteCard.dataset.density = q.t.length > 220 ? "dense" : q.t.length > 130 ? "long" : "normal";
+    quoteText.textContent=q.t; quoteAuthor.textContent=currentQuote.a;
+    var old=quoteCard.querySelector(".quote-badge"); if(old) old.remove();
+    if(q.custom){ var b=document.createElement("span"); b.className="quote-badge"; b.textContent="내 명언"; quoteAuthor.appendChild(b); }
+    result.classList.add("is-revealed");
+    result.style.transform=""; result.style.opacity="";
+    ready.hidden=true; quoteCard.hidden=false; memoCta.hidden=false;
+    deck.classList.add("is-background");
+    quoteCard.classList.remove("anim-in"); void quoteCard.offsetWidth; quoteCard.classList.add("anim-in");
+    live.textContent="새 카드: "+q.t+" — "+currentQuote.a;
+    if(typeof window.updateMobileViewportStatus === "function") window.setTimeout(window.updateMobileViewportStatus, 0);
+  }
+
+  function finishDismiss(focusDeck){
+    result.classList.remove("is-revealed","is-dragging");
+    result.style.transform=""; result.style.opacity="";
+    deck.classList.remove("is-background");
+    quoteCard.hidden=true; memoCta.hidden=true; ready.hidden=false;
+    quoteCard.dataset.state="ready"; quoteCard.classList.remove("anim-in");
+    testHook.dismissCount = (testHook.dismissCount || 0) + 1;
+    live.textContent="명언 카드를 내렸습니다. 새 카드를 뽑을 수 있습니다.";
+    if(focusDeck) deck.focus();
+    if(typeof window.updateMobileViewportStatus === "function") window.setTimeout(window.updateMobileViewportStatus, 0);
+  }
+
+  function dismissQuote(focusDeck){
+    if(quoteCard.hidden) return;
+    result.classList.remove("is-dragging");
+    if(reduce){ finishDismiss(focusDeck); return; }
+    result.style.transform="translateY(calc(100% + 34px))";
+    result.style.opacity="0";
+    window.setTimeout(function(){ finishDismiss(focusDeck); },260);
+  }
+
+  function setHint(s){
+    if(s==="hold"){ hint.innerHTML='<span class="dot"></span>천천히 아래로 당겨주세요'; hint.classList.remove("ready"); }
+    else if(s==="release"){ hint.innerHTML='<span class="dot"></span>놓으면 카드가 뽑혀요'; hint.classList.add("ready"); }
+    else { hint.innerHTML='<span class="dot"></span>원하는 카드를 아래로 당겨 뽑으세요'; hint.classList.remove("ready"); }
+  }
+  function buzz(){ if(navigator.vibrate){ try{navigator.vibrate(8);}catch(_){} } }
+
+  if(window.PointerEvent){
+    deck.addEventListener("pointerdown",onDown);
+    window.addEventListener("pointermove",onMove,{passive:false});
+    window.addEventListener("pointerup",onUp);
+    window.addEventListener("pointercancel",onUp);
+  }else{
+    deck.addEventListener("touchstart",onDown,{passive:true});
+    window.addEventListener("touchmove",onMove,{passive:false});
+    window.addEventListener("touchend",onUp);
+    deck.addEventListener("mousedown",onDown);
+    window.addEventListener("mousemove",onMove);
+    window.addEventListener("mouseup",onUp);
+  }
+  deck.addEventListener("keydown",function(e){ if(e.key==="Enter"||e.key===" "||e.key==="Spacebar"){ e.preventDefault(); doDraw(); } });
+
+  var quoteDragging=false, quoteStartY=0, quoteDy=0, quotePointerId=null, quoteStartScroll=0;
+  function quoteClientY(e){ return e.touches?e.touches[0].clientY:e.clientY; }
+  function onQuoteDown(e){
+    if(quoteCard.hidden || e.target.closest("button,textarea,input,a")) return;
+    quoteStartScroll=quoteCard.scrollTop || 0;
+    if(quoteStartScroll>0) return;
+    quoteDragging=true; quoteDy=0; quoteStartY=quoteClientY(e); quotePointerId=e.pointerId;
+    result.classList.add("is-dragging");
+    if(e.pointerId!=null&&quoteCard.setPointerCapture){ try{quoteCard.setPointerCapture(e.pointerId);}catch(_){} }
+  }
+  function onQuoteMove(e){
+    if(!quoteDragging) return;
+    if(quoteStartScroll>0){ quoteDragging=false; result.classList.remove("is-dragging"); return; }
+    var dy=quoteClientY(e)-quoteStartY;
+    if(dy<0) dy=dy*0.18;
+    quoteDy=Math.max(0,dy);
+    result.style.transform="translateY("+quoteDy+"px)";
+    result.style.opacity=String(Math.max(0.35,1-quoteDy/240));
+    if(quoteDy>0&&e.cancelable) e.preventDefault();
+  }
+  function onQuoteUp(){
+    if(!quoteDragging) return;
+    quoteDragging=false;
+    if(quotePointerId!=null&&quoteCard.releasePointerCapture){ try{quoteCard.releasePointerCapture(quotePointerId);}catch(_){} }
+    result.classList.remove("is-dragging");
+    if(quoteDy>78){ dismissQuote(false); return; }
+    result.style.transform=""; result.style.opacity="";
+  }
+  if(window.PointerEvent){
+    quoteCard.addEventListener("pointerdown",onQuoteDown);
+    window.addEventListener("pointermove",onQuoteMove,{passive:false});
+    window.addEventListener("pointerup",onQuoteUp);
+    window.addEventListener("pointercancel",onQuoteUp);
+  }else{
+    quoteCard.addEventListener("touchstart",onQuoteDown,{passive:true});
+    window.addEventListener("touchmove",onQuoteMove,{passive:false});
+    window.addEventListener("touchend",onQuoteUp);
+    quoteCard.addEventListener("mousedown",onQuoteDown);
+    window.addEventListener("mousemove",onQuoteMove);
+    window.addEventListener("mouseup",onQuoteUp);
+  }
+  quoteDismiss.addEventListener("click",function(){ dismissQuote(true); });
+
+  /* ===================== generic sheet controller ===================== */
+  function focusables(root){ return Array.prototype.filter.call(root.querySelectorAll('button,textarea,input,[tabindex]'),function(x){return !x.disabled && x.offsetParent!==null;}); }
+  function openSheet(root,focusEl){
+    // only one sheet at a time
+    Array.prototype.forEach.call(document.querySelectorAll(".sheet-root.open"),function(o){
+      if(o!==root){ o.classList.remove("open"); o.hidden=true; if(o._key) document.removeEventListener("keydown",o._key); }
+    });
+    root._last=document.activeElement;
+    root.hidden=false; void root.offsetWidth; root.classList.add("open");
+    setTimeout(function(){ var f=focusEl&&!focusEl.hidden?focusEl:focusables(root)[0]; if(f) f.focus(); }, reduce?0:170);
+    root._key=function(e){
+      if(e.key==="Escape"){ closeSheet(root); }
+      else if(e.key==="Tab"){ var f=focusables(root); if(!f.length)return; var a=f[0],b=f[f.length-1];
+        if(e.shiftKey&&document.activeElement===a){e.preventDefault();b.focus();}
+        else if(!e.shiftKey&&document.activeElement===b){e.preventDefault();a.focus();} }
+    };
+    document.addEventListener("keydown",root._key);
+  }
+  function closeSheet(root){
+    root.classList.remove("open");
+    document.removeEventListener("keydown",root._key);
+    var fin=function(){ root.hidden=true; if(root._last&&root._last.focus) root._last.focus(); };
+    if(reduce) fin(); else setTimeout(fin,420);
+  }
+  Array.prototype.forEach.call(document.querySelectorAll(".backdrop[data-close]"),function(bd){
+    bd.addEventListener("click",function(){ closeSheet(bd.closest(".sheet-root")); });
+  });
+
+  /* ===================== 명언 추가 ===================== */
+  var addRoot=document.getElementById("addRoot");
+  var qText=document.getElementById("qText"), qAuthor=document.getElementById("qAuthor");
+  var addField=document.getElementById("addField"), textCount=document.getElementById("textCount");
+  document.getElementById("openAddTop").addEventListener("click",function(){
+    qText.value=""; qAuthor.value=""; textCount.textContent="0/120"; addField.classList.remove("error","shake");
+    openSheet(addRoot,qText);
+  });
+  document.getElementById("addCancel").addEventListener("click",function(){ closeSheet(addRoot); });
+  qText.addEventListener("input",function(){ textCount.textContent=qText.value.length+"/120"; if(qText.value.trim()) addField.classList.remove("error"); });
+  document.getElementById("addSave").addEventListener("click",function(){
+    var t=qText.value.trim();
+    if(!t){ addField.classList.add("error"); addField.classList.remove("shake"); void addField.offsetWidth; addField.classList.add("shake"); qText.focus(); return; }
+    var a=qAuthor.value.trim();
+    var customId="custom-"+Date.now()+"-"+Math.random().toString(36).slice(2,6);
+    QUOTES.push({id:customId,t:t,a:a,custom:true,source:"local"});
+    quoteBag=[];
+    customQuotes.push({id:customId,t:t,a:a}); lsSet(QKEY,customQuotes);
+    closeSheet(addRoot);
+    showToast("명언이 덱에 추가됐어요");
+    live.textContent="명언이 덱에 추가되었습니다. 이제 "+QUOTES.length+"개 카드 중에서 뽑습니다.";
+    testHook.customQuoteCount = customQuotes.length;
+    testHook.totalQuoteCount = QUOTES.length;
+  });
+
+  /* ===================== 내 생각 메모 ===================== */
+  var memoRoot=document.getElementById("memoRoot");
+  var memoText=document.getElementById("memoText"), memoField=document.getElementById("memoField"), memoCount=document.getElementById("memoCount");
+  var memoWhen=document.getElementById("memoWhen");
+  document.getElementById("memoBtn").addEventListener("click",function(){
+    if(!currentQuote.t) return;
+    memoWhen.textContent=fmtFull(new Date())+" · "+fmtTime(new Date());
+    document.getElementById("memoQuoteText").textContent="“"+currentQuote.t+"”";
+    document.getElementById("memoQuoteAuthor").textContent=currentQuote.a;
+    memoText.value=""; memoCount.textContent="0/300"; memoField.classList.remove("error","shake");
+    openSheet(memoRoot,memoText);
+  });
+  document.getElementById("memoCancel").addEventListener("click",function(){ closeSheet(memoRoot); });
+  memoText.addEventListener("input",function(){ memoCount.textContent=memoText.value.length+"/300"; if(memoText.value.trim()) memoField.classList.remove("error"); });
+  document.getElementById("memoSave").addEventListener("click",function(){
+    var th=memoText.value.trim();
+    if(!th){ memoField.classList.add("error"); memoField.classList.remove("shake"); void memoField.offsetWidth; memoField.classList.add("shake"); memoText.focus(); return; }
+    var now=new Date();
+    memos.push({ id:now.getTime()+"-"+Math.random().toString(36).slice(2,6), ts:now.getTime(),
+      dateKey:keyOf(now), time:fmtTime(now), quote:currentQuote.t, author:currentQuote.a, thought:th });
+    lsSet(MEMO_KEY,memos);
+    closeSheet(memoRoot);
+    showToast("메모를 저장했어요");
+    live.textContent="오늘의 메모가 저장되었습니다.";
+  });
+
+  /* ===================== 메모 달력 ===================== */
+  var calRoot=document.getElementById("calRoot");
+  var calMonthView=document.getElementById("calMonthView"), calDayView=document.getElementById("calDayView");
+  var calGrid=document.getElementById("calGrid"), calMonthLabel=document.getElementById("calMonthLabel"), calEmpty=document.getElementById("calEmpty");
+  var viewY, viewM;
+
+  function memosByKey(){ var m={}; memos.forEach(function(x){ (m[x.dateKey]=m[x.dateKey]||[]).push(x); }); return m; }
+
+  function renderCalendar(){
+    calMonthView.hidden=false; calDayView.hidden=true;
+    calMonthLabel.textContent=viewY+"년 "+(viewM+1)+"월";
+    var first=new Date(viewY,viewM,1), startDow=first.getDay(), days=new Date(viewY,viewM+1,0).getDate();
+    var today=new Date(), tkey=keyOf(today);
+    var byKey=memosByKey(), monthHas=0;
+    var html="";
+    for(var b=0;b<startDow;b++) html+='<div class="cal-cell empty"></div>';
+    for(var d=1;d<=days;d++){
+      var k=viewY+"-"+pad(viewM+1)+"-"+pad(d);
+      var list=byKey[k]||[], cnt=list.length; if(cnt) monthHas++;
+      var cls="cal-cell"+(cnt?" has":"")+(k===tkey?" today":"");
+      var dots="";
+      if(cnt){ var n=Math.min(cnt,4); for(var j=0;j<n;j++) dots+="<i></i>"; }
+      html+='<button class="'+cls+'" type="button" '+(cnt?'data-k="'+k+'" aria-label="'+(viewM+1)+'월 '+d+'일, 메모 '+cnt+'개"':'tabindex="-1" aria-hidden="true"')+'>'+
+            '<span class="cal-num">'+d+'</span><span class="cal-dots">'+dots+'</span></button>';
+    }
+    calGrid.innerHTML=html;
+    calEmpty.hidden = monthHas>0;
+  }
+  function openDay(k){
+    var list=memos.filter(function(x){return x.dateKey===k;}).sort(function(a,b){return a.ts-b.ts;});
+    var parts=k.split("-"), d=new Date(+parts[0],+parts[1]-1,+parts[2]);
+    document.getElementById("calDayTitle").textContent=fmtFull(d);
+    var html="";
+    list.forEach(function(m){
+      html+='<div class="entry"><p class="e-time">'+m.time+'</p>'+
+            '<p class="e-quote">'+esc(m.quote)+'</p>'+
+            '<p class="e-author">'+esc(m.author||"미상")+'</p>'+
+            '<p class="e-thought">'+esc(m.thought)+'</p></div>';
+    });
+    document.getElementById("dayList").innerHTML=html;
+    calMonthView.hidden=true; calDayView.hidden=false;
+    calDayView.querySelector(".cal-back").focus();
+  }
+  function esc(s){ return String(s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c];}); }
+
+  document.getElementById("openCal").addEventListener("click",function(){
+    var t=new Date(); viewY=t.getFullYear(); viewM=t.getMonth();
+    renderCalendar(); openSheet(calRoot);
+  });
+  document.getElementById("calPrev").addEventListener("click",function(){ viewM--; if(viewM<0){viewM=11;viewY--;} renderCalendar(); });
+  document.getElementById("calNext").addEventListener("click",function(){ viewM++; if(viewM>11){viewM=0;viewY++;} renderCalendar(); });
+  document.getElementById("calBack").addEventListener("click",renderCalendar);
+  calGrid.addEventListener("click",function(e){ var c=e.target.closest(".cal-cell.has"); if(c&&c.getAttribute("data-k")) openDay(c.getAttribute("data-k")); });
+
+  /* ===================== toast ===================== */
+  var toast=document.getElementById("toast"), toastMsg=document.getElementById("toastMsg"), toastTimer=null;
+  function showToast(msg){ toastMsg.textContent=msg; toast.classList.add("show"); clearTimeout(toastTimer); toastTimer=setTimeout(function(){ toast.classList.remove("show"); },2600); }
+
+  /* ===================== init ===================== */
+  testHook.publicQuoteCount = BASE_QUOTES.length;
+  testHook.totalQuoteCount = QUOTES.length;
+  measure(); buildDeck();
+  window.addEventListener("resize",measure);
+  tick(); setInterval(tick,1000/60);
+  if(typeof window.updateMobileViewportStatus === "function") window.updateMobileViewportStatus();
+})();
+});
+</script>
