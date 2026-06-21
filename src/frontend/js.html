@@ -37,9 +37,10 @@ document.addEventListener('DOMContentLoaded', function () {
   /* ---- storage (localStorage, graceful fallback) ---- */
   var MEMO_KEY="jotcard.memos.v1", QKEY="jotcard.quotes.v1";
   function lsGet(k){ try{ return JSON.parse(window.localStorage.getItem(k)||"null"); }catch(e){ return null; } }
-  function lsSet(k,v){ try{ window.localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
-  var memos = lsGet(MEMO_KEY) || [];
-  var customQuotes = lsGet(QKEY) || [];
+  function lsArray(k){ var value=lsGet(k); return Array.isArray(value)?value:[]; }
+  function lsSet(k,v){ try{ window.localStorage.setItem(k, JSON.stringify(v)); return true; }catch(e){ return false; } }
+  var memos = lsArray(MEMO_KEY);
+  var customQuotes = lsArray(QKEY);
   customQuotes.forEach(function(c,i){ QUOTES.push({id:c.id || ("custom-"+(i+1)), t:c.t, a:c.a, custom:true, source:"local"}); });
 
   /* ---- date helpers ---- */
@@ -271,11 +272,11 @@ document.addEventListener('DOMContentLoaded', function () {
     window.setTimeout(finish,940);
   }
 
-  var currentQuote={t:"",a:""};
+  var currentQuote={id:"",t:"",a:"",source:"",custom:false};
   function reveal(idx){
     var q=QUOTES[idx];
     var drawId = quoteIdAt(idx);
-    currentQuote={t:q.t,a:(q.a&&q.a.trim()&&q.a!=="Unknown")?q.a.trim():"미상"};
+    currentQuote={id:drawId,t:q.t,a:(q.a&&q.a.trim()&&q.a!=="Unknown")?q.a.trim():"미상",source:q.source||(q.custom?"local":"default"),custom:!!q.custom};
     lastQuoteId=drawId;
     testHook.lastDrawId = drawId;
     testHook.drawCount = (testHook.drawCount || 0) + 1;
@@ -424,7 +425,12 @@ document.addEventListener('DOMContentLoaded', function () {
     var customId="custom-"+Date.now()+"-"+Math.random().toString(36).slice(2,6);
     QUOTES.push({id:customId,t:t,a:a,custom:true,source:"local"});
     quoteBag=[];
-    customQuotes.push({id:customId,t:t,a:a}); lsSet(QKEY,customQuotes);
+    customQuotes.push({id:customId,t:t,a:a});
+    if(!lsSet(QKEY,customQuotes)){
+      customQuotes.pop(); QUOTES.pop(); quoteBag=[];
+      showToast("저장 공간을 사용할 수 없어 추가하지 못했어요");
+      return;
+    }
     closeSheet(addRoot);
     showToast("명언이 덱에 추가됐어요");
     live.textContent="명언이 덱에 추가되었습니다. 이제 "+QUOTES.length+"개 카드 중에서 뽑습니다.";
@@ -450,9 +456,15 @@ document.addEventListener('DOMContentLoaded', function () {
     var th=memoText.value.trim();
     if(!th){ memoField.classList.add("error"); memoField.classList.remove("shake"); void memoField.offsetWidth; memoField.classList.add("shake"); memoText.focus(); return; }
     var now=new Date();
-    memos.push({ id:now.getTime()+"-"+Math.random().toString(36).slice(2,6), ts:now.getTime(),
-      dateKey:keyOf(now), time:fmtTime(now), quote:currentQuote.t, author:currentQuote.a, thought:th });
-    lsSet(MEMO_KEY,memos);
+    var memo={ id:now.getTime()+"-"+Math.random().toString(36).slice(2,6), ts:now.getTime(),
+      dateKey:keyOf(now), time:fmtTime(now), quoteId:currentQuote.id, quoteSource:currentQuote.source,
+      quote:currentQuote.t, author:currentQuote.a, thought:th };
+    memos.push(memo);
+    if(!lsSet(MEMO_KEY,memos)){
+      memos.pop();
+      showToast("저장 공간을 사용할 수 없어 메모를 저장하지 못했어요");
+      return;
+    }
     closeSheet(memoRoot);
     showToast("메모를 저장했어요");
     live.textContent="오늘의 메모가 저장되었습니다.";
