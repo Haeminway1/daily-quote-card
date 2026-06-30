@@ -36,6 +36,7 @@
         var data = event.data || {};
         if (!data || data.type !== 'GAS_WRAPPER_READY') return;
         if (!isTrustedWrapperOrigin(event.origin)) return;
+        state.storageNonce = data.storageNonce || '';
         window.clearTimeout(fallbackTimer);
         mark('verified', event.origin);
         try {

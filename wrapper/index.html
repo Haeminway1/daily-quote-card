@@ -46,7 +46,7 @@
       <input id="gas-url-input" data-test-id="pwa-gas-url-input" inputmode="url" autocomplete="url" placeholder="https://script.google.com/macros/s/.../exec">
       <button id="save-gas-url" data-test-id="pwa-save-gas-url" type="button">URL 저장하고 열기</button>
       <div class="setup-error" data-test-id="pwa-wrapper-error"></div>
-      <div class="setup-hint">초기 배포 후에는 <code>?gasUrl=배포URL</code>로 열어 자동 저장할 수 있습니다. 저장된 URL은 이 프로젝트 origin의 localStorage에만 보관됩니다.</div>
+      <div class="setup-hint">초기 배포 후에는 <code>?gasUrl=배포URL</code>로 열어 자동 저장할 수 있습니다. 저장된 URL과 앱 데이터는 이 프로젝트 origin의 localStorage에만 보관됩니다.</div>
     </div>
   </section>
 
@@ -54,6 +54,13 @@
   <script>
     (function () {
       var STORAGE_KEY = 'gas.quotecard.wrapper.gasUrl.v1';
+      var APP_STORAGE_KEY = 'gas.quotecard.appState.v1';
+      var STORAGE_APP = 'quotecard';
+      var STORAGE_GET = 'QUOTECARD_STORAGE_GET';
+      var STORAGE_STATE = 'QUOTECARD_STORAGE_STATE';
+      var STORAGE_SET = 'QUOTECARD_STORAGE_SET';
+      var STORAGE_ACK = 'QUOTECARD_STORAGE_ACK';
+      var storageNonce = Math.random().toString(36).slice(2) + Date.now().toString(36);
       var frame = document.getElementById('appframe');
       var status = document.querySelector('[data-test-id="pwa-wrapper-status"]');
       var input = document.getElementById('gas-url-input');
@@ -65,6 +72,8 @@
       var handshakeDeadline = 0;
       var readyFallback = 0;
       var expectedFrameOrigin = '';
+      var lastFrameOrigin = '';
+      var appWindow = null;
 
       function setState(state, message) {
         document.body.dataset.gasFrameState = state;
@@ -77,6 +86,36 @@
 
       function saveGasUrl(value) {
         try { localStorage.setItem(STORAGE_KEY, value); } catch (_) {}
+      }
+
+      function boundedArray(value, limit) {
+        return Array.isArray(value) ? value.slice(Math.max(0, value.length - limit)) : [];
+      }
+
+      function normalizeAppState(value) {
+        var state = value && typeof value === 'object' ? value : {};
+        return {
+          version: 1,
+          quotes: boundedArray(state.quotes, 200),
+          memos: boundedArray(state.memos, 500),
+          drawn: boundedArray(state.drawn, 500),
+          updatedAt: Number.isFinite(Number(state.updatedAt)) ? Number(state.updatedAt) : Date.now()
+        };
+      }
+
+      function readAppState() {
+        try { return normalizeAppState(JSON.parse(localStorage.getItem(APP_STORAGE_KEY) || 'null')); }
+        catch (_) { return normalizeAppState(null); }
+      }
+
+      function saveAppState(value) {
+        var state = normalizeAppState(value);
+        try {
+          localStorage.setItem(APP_STORAGE_KEY, JSON.stringify(state));
+          return { ok: true, state: state };
+        } catch (error) {
+          return { ok: false, state: state, error: error && error.name ? error.name : 'localStorage unavailable' };
+        }
       }
 
       function removeWrapperParams(searchParams) {
@@ -117,11 +156,59 @@
         try {
           frame.contentWindow.postMessage({
             type: 'GAS_WRAPPER_READY',
-            app: 'quotecard',
+            app: STORAGE_APP,
             wrapperOrigin: window.location.origin,
-            version: 'gas-wrapper-v2'
+            version: 'gas-wrapper-v2',
+            storageNonce: storageNonce
           }, expectedFrameOrigin || '*');
         } catch (_) {}
+      }
+
+      function frameTargetOrigin() {
+        return lastFrameOrigin || (expectedFrameOrigin === '*' ? '*' : expectedFrameOrigin) || '*';
+      }
+
+      function postAppState(requestId) {
+        var target = appWindow || (frame && frame.contentWindow);
+        if (!target) return;
+        try {
+          var message = {
+            type: STORAGE_STATE,
+            app: STORAGE_APP,
+            state: readAppState(),
+            nonce: storageNonce
+          };
+          if (requestId) message.requestId = requestId;
+          target.postMessage(message, frameTargetOrigin());
+        } catch (_) {}
+      }
+
+      function postStorageAck(requestId, result) {
+        var target = appWindow || (frame && frame.contentWindow);
+        if (!target || !requestId) return;
+        try {
+          target.postMessage({
+            type: STORAGE_ACK,
+            app: STORAGE_APP,
+            requestId: requestId,
+            ok: result && result.ok === true,
+            error: result && result.error ? result.error : '',
+            nonce: storageNonce
+          }, frameTargetOrigin());
+        } catch (_) {}
+      }
+
+      function isAllowedFrameMessageOrigin(origin) {
+        if (!expectedFrameOrigin || expectedFrameOrigin === '*') return true;
+        if (origin === expectedFrameOrigin) return true;
+        if (isLocalWrapper() && (origin === 'null' || /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin))) return true;
+        return /^https:\/\/([a-z0-9-]+\.)?googleusercontent\.com$/.test(origin);
+      }
+
+      function isValidStorageMessage(data, allowInitialRequest) {
+        if (!data || data.app !== STORAGE_APP) return false;
+        if (data.nonce === storageNonce) return true;
+        return allowInitialRequest && !data.nonce;
       }
 
       function startHandshakeLoop() {
@@ -164,13 +251,31 @@
       });
 
       window.addEventListener('message', function (event) {
-        if (event.source !== frame.contentWindow) return;
-        if (expectedFrameOrigin && expectedFrameOrigin !== '*' && event.origin !== expectedFrameOrigin) return;
         var data = event.data || {};
-        if (data.type !== 'GAS_FRAME_VERIFIED') return;
-        window.clearInterval(handshakeTimer);
-        window.clearTimeout(readyFallback);
-        setState('ready', '연결 완료');
+        if (!data || data.app !== STORAGE_APP) return;
+        if (!isAllowedFrameMessageOrigin(event.origin)) return;
+        if (!event.source || typeof event.source.postMessage !== 'function') return;
+        appWindow = event.source;
+        lastFrameOrigin = event.origin;
+        if (data.type === 'GAS_FRAME_VERIFIED') {
+          window.clearInterval(handshakeTimer);
+          window.clearTimeout(readyFallback);
+          setState('ready', '연결 완료');
+          postAppState();
+          return;
+        }
+        if (data.type === STORAGE_GET) {
+          if (!isValidStorageMessage(data, true)) return;
+          window.clearInterval(handshakeTimer);
+          window.clearTimeout(readyFallback);
+          setState('ready', '연결 완료');
+          postAppState(data.requestId || '');
+          return;
+        }
+        if (data.type === STORAGE_SET) {
+          if (!isValidStorageMessage(data, false)) return;
+          postStorageAck(data.requestId || '', saveAppState(data.state || {}));
+        }
       });
 
       saveButton.addEventListener('click', function () {

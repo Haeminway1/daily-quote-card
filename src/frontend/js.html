@@ -21,9 +21,10 @@ document.addEventListener('DOMContentLoaded', function () {
   var BASE_QUOTES = Array.isArray(window.QUOTE_DECK) ? window.QUOTE_DECK.map(function(q){
     return { id:q.id, t:q.text, a:q.author, source:"default" };
   }) : [];
-  var QUOTES = BASE_QUOTES.length ? BASE_QUOTES.slice() : [
+  var FALLBACK_QUOTES = [
     {id:"fallback-001", t:"작은 시작이 가장 큰 용기다.", a:"미상", source:"fallback"}
   ];
+  var QUOTES = BASE_QUOTES.length ? BASE_QUOTES.slice() : FALLBACK_QUOTES.slice();
 
   var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   var testHook = window.GOOD_THOUGHT_CARD_TEST = window.GOOD_THOUGHT_CARD_TEST || {};
@@ -34,14 +35,204 @@ document.addEventListener('DOMContentLoaded', function () {
   }
   var random = Number.isFinite(Number(testHook.seed)) ? seededRandom(Number(testHook.seed)) : Math.random;
 
-  /* ---- storage (localStorage, graceful fallback) ---- */
-  var MEMO_KEY="jotcard.memos.v1", QKEY="jotcard.quotes.v1";
+  /* ---- storage (localStorage + optional wrapper bridge) ---- */
+  var MEMO_KEY="jotcard.memos.v1", QKEY="jotcard.quotes.v1", DRAWN_KEY="jotcard.drawn.v1";
+  var STORAGE_APP="quotecard", STORAGE_GET="QUOTECARD_STORAGE_GET", STORAGE_STATE="QUOTECARD_STORAGE_STATE", STORAGE_SET="QUOTECARD_STORAGE_SET", STORAGE_ACK="QUOTECARD_STORAGE_ACK";
   function lsGet(k){ try{ return JSON.parse(window.localStorage.getItem(k)||"null"); }catch(e){ return null; } }
   function lsArray(k){ var value=lsGet(k); return Array.isArray(value)?value:[]; }
   function lsSet(k,v){ try{ window.localStorage.setItem(k, JSON.stringify(v)); return true; }catch(e){ return false; } }
-  var memos = lsArray(MEMO_KEY);
-  var customQuotes = lsArray(QKEY);
-  customQuotes.forEach(function(c,i){ QUOTES.push({id:c.id || ("custom-"+(i+1)), t:c.t, a:c.a, custom:true, source:"local"}); });
+  function bounded(list,limit){ return Array.isArray(list) ? list.slice(Math.max(0,list.length-limit)) : []; }
+  function safeString(value,max){ return String(value==null?"":value).slice(0,max); }
+  function normalizeQuotes(list){
+    return bounded(list,200).filter(function(q){ return q && typeof q.t === "string" && q.t.trim(); }).map(function(q,i){
+      return { id:safeString(q.id || ("custom-"+(i+1)),80), t:safeString(q.t,600), a:safeString(q.a || "",40) };
+    });
+  }
+  function normalizeMemos(list){
+    return bounded(list,500).filter(function(m){ return m && typeof m.thought === "string" && m.thought.trim(); }).map(function(m){
+      var ts=Number(m.ts);
+      return { id:safeString(m.id || (Date.now()+"-"+Math.random().toString(36).slice(2,6)),80), ts:Number.isFinite(ts)?ts:Date.now(),
+        dateKey:safeString(m.dateKey || keyOf(new Date()),16), time:safeString(m.time || "",24),
+        quoteId:safeString(m.quoteId || "",80), quoteSource:safeString(m.quoteSource || "",32),
+        quote:safeString(m.quote || "",400), author:safeString(m.author || "미상",80), thought:safeString(m.thought,300) };
+    });
+  }
+  function normalizeDraws(list){
+    return bounded(list,500).filter(function(d){ return d && d.quoteId; }).map(function(d){
+      var ts=Number(d.ts);
+      return { id:safeString(d.id || (Date.now()+"-"+Math.random().toString(36).slice(2,6)),80), ts:Number.isFinite(ts)?ts:Date.now(),
+        dateKey:safeString(d.dateKey || keyOf(new Date()),16), time:safeString(d.time || "",24),
+        quoteId:safeString(d.quoteId || "",80), quoteSource:safeString(d.quoteSource || "",32),
+        quote:safeString(d.quote || "",400), author:safeString(d.author || "미상",80), custom:!!d.custom };
+    });
+  }
+  function mergeById(localList, bridgeList, fallbackPrefix){
+    var out=[], seen={};
+    function add(item,index){
+      if(!item || typeof item !== "object") return;
+      var id=safeString(item && item.id || (fallbackPrefix+"-"+index),80);
+      if(!id || seen[id]) return;
+      seen[id]=true;
+      var next={};
+      Object.keys(item).forEach(function(key){ next[key]=item[key]; });
+      next.id=id;
+      out.push(next);
+    }
+    bounded(localList,500).forEach(add);
+    bounded(bridgeList,500).forEach(add);
+    return out;
+  }
+  function currentStorageState(){
+    return { version:1, quotes:normalizeQuotes(customQuotes), memos:normalizeMemos(memos), drawn:normalizeDraws(drawnCards), updatedAt:Date.now() };
+  }
+  function writeLocalState(){
+    var quotesOk=lsSet(QKEY,customQuotes);
+    var memosOk=lsSet(MEMO_KEY,memos);
+    var drawnOk=lsSet(DRAWN_KEY,drawnCards);
+    return quotesOk && memosOk && drawnOk;
+  }
+  function isFramed(){ try{ return window.self !== window.top; }catch(_){ return true; } }
+  var storageBridge={requested:false,loaded:false,mode:"local",fallbackTimer:0,origin:"",nonce:"",seq:0,pending:{},localDirtyBeforeHydration:false};
+  function updateStorageHook(){
+    testHook.storageReady = true;
+    testHook.storageMode = storageBridge.mode;
+    testHook.customQuoteCount = customQuotes.length;
+    testHook.memoCount = memos.length;
+    testHook.drawnCardCount = drawnCards.length;
+    testHook.publicQuoteCount = BASE_QUOTES.length;
+    testHook.totalQuoteCount = QUOTES.length;
+    testHook.pendingBridgeSaves = Object.keys(storageBridge.pending).length;
+  }
+  function guardState(){ return window.GAS_FRAME_GUARD || {}; }
+  function bridgeNonce(){ return storageBridge.nonce || guardState().storageNonce || ""; }
+  function bridgeOrigin(){ return storageBridge.origin || guardState().verifiedOrigin || ""; }
+  function bridgeTargetWindow(){
+    if(!isFramed()) return null;
+    try{ if(window.top && window.top !== window) return window.top; }catch(_){}
+    try{ if(window.parent && window.parent !== window) return window.parent; }catch(_){}
+    return null;
+  }
+  function isBridgeSource(source){
+    if(!isFramed() || !source) return false;
+    try{ if(source === window.parent) return true; }catch(_){}
+    try{ if(source === window.top) return true; }catch(_){}
+    return false;
+  }
+  function isAllowedStorageOrigin(origin){
+    var guard=guardState(), allowed=Array.isArray(guard.allowedOrigins)?guard.allowedOrigins:[];
+    if(guard.verifiedOrigin) return origin === guard.verifiedOrigin;
+    if(allowed.indexOf(origin) !== -1) return true;
+    return /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
+  }
+  function isTrustedStorageMessage(event,data){
+    if(!isBridgeSource(event.source)) return false;
+    if(!isAllowedStorageOrigin(event.origin)) return false;
+    var nonce=bridgeNonce();
+    if(nonce && data.nonce !== nonce) return false;
+    storageBridge.origin=event.origin;
+    if(data.nonce) storageBridge.nonce=data.nonce;
+    return true;
+  }
+  function postBridge(type,state,requestId){
+    var target=bridgeTargetWindow();
+    if(!target) return false;
+    var message={type:type, app:STORAGE_APP, state:state || null, nonce:bridgeNonce()};
+    if(requestId) message.requestId=requestId;
+    try{ target.postMessage(message, bridgeOrigin() || "*"); return true; }catch(_){ return false; }
+  }
+  function finishBridgeSave(requestId,ok,message){
+    var pending=storageBridge.pending[requestId];
+    if(!pending) return;
+    delete storageBridge.pending[requestId];
+    updateStorageHook();
+    if(!ok) markStorageError(message || "wrapper storage failed");
+    if(pending.done) pending.done(!!ok);
+  }
+  function markStorageError(message){
+    testHook.lastStorageError=message;
+    if(typeof showToast === "function") showToast("기기 저장소에 완전히 저장하지 못했어요");
+  }
+  function persistState(done){
+    var localOk=writeLocalState();
+    updateStorageHook();
+    if(isFramed()){
+      if(!storageBridge.loaded) storageBridge.localDirtyBeforeHydration=true;
+      var requestId="save-"+Date.now()+"-"+(++storageBridge.seq);
+      storageBridge.pending[requestId]={done:done||null};
+      if(postBridge(STORAGE_SET,currentStorageState(),requestId)){
+        updateStorageHook();
+        window.setTimeout(function(){ finishBridgeSave(requestId,false,"wrapper storage timeout"); },2500);
+        return true;
+      }
+      delete storageBridge.pending[requestId];
+      markStorageError("wrapper storage unavailable");
+      if(done) done(false);
+      return false;
+    }
+    if(done) done(localOk);
+    return localOk;
+  }
+  function rebuildQuotes(resetBag){
+    QUOTES = BASE_QUOTES.length ? BASE_QUOTES.slice() : FALLBACK_QUOTES.slice();
+    customQuotes.forEach(function(c,i){ QUOTES.push({id:c.id || ("custom-"+(i+1)), t:c.t, a:c.a, custom:true, source:"local"}); });
+    if(resetBag) quoteBag=[];
+    updateStorageHook();
+  }
+  function applyBridgeState(state){
+    var incoming = state && typeof state === "object" ? state : {};
+    var shouldSyncDirty=storageBridge.localDirtyBeforeHydration;
+    if(shouldSyncDirty){
+      customQuotes = normalizeQuotes(mergeById(incoming.quotes || [],customQuotes,"custom"));
+      memos = normalizeMemos(mergeById(incoming.memos || [],memos,"memo"));
+      drawnCards = normalizeDraws(mergeById(incoming.drawn || [],drawnCards,"drawn"));
+    }else{
+      customQuotes = normalizeQuotes(incoming.quotes || []);
+      memos = normalizeMemos(incoming.memos || []);
+      drawnCards = normalizeDraws(incoming.drawn || []);
+    }
+    storageBridge.loaded=true;
+    storageBridge.mode="wrapper";
+    storageBridge.localDirtyBeforeHydration=false;
+    window.clearTimeout(storageBridge.fallbackTimer);
+    rebuildQuotes(true);
+    writeLocalState();
+    updateStorageHook();
+    if(calRoot && !calRoot.hidden) renderCalendar();
+    if(shouldSyncDirty) persistState();
+  }
+  function requestBridgeState(){
+    if(!isFramed()){ updateStorageHook(); return; }
+    storageBridge.requested=true;
+    testHook.storageReady=false;
+    postBridge(STORAGE_GET,null);
+    storageBridge.fallbackTimer=window.setTimeout(function(){
+      if(storageBridge.loaded) return;
+      storageBridge.mode="local";
+      updateStorageHook();
+    },1500);
+  }
+  window.addEventListener("message",function(event){
+    var data=event.data || {};
+    if(!data || data.app !== STORAGE_APP) return;
+    if(data.type === "GAS_WRAPPER_READY"){
+      if(isAllowedStorageOrigin(event.origin)){
+        storageBridge.origin=event.origin;
+        storageBridge.nonce=data.storageNonce || storageBridge.nonce;
+      }
+      return;
+    }
+    if(data.type !== STORAGE_STATE && data.type !== STORAGE_ACK) return;
+    if(!isTrustedStorageMessage(event,data)) return;
+    if(data.type === STORAGE_STATE){
+      applyBridgeState(data.state || {});
+      return;
+    }
+    finishBridgeSave(data.requestId || "", data.ok === true, data.error || "");
+  });
+  var memos = normalizeMemos(lsArray(MEMO_KEY));
+  var customQuotes = normalizeQuotes(lsArray(QKEY));
+  var drawnCards = normalizeDraws(lsArray(DRAWN_KEY));
+  rebuildQuotes(false);
 
   /* ---- date helpers ---- */
   var WD=["일","월","화","수","목","금","토"];
@@ -273,6 +464,14 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   var currentQuote={id:"",t:"",a:"",source:"",custom:false};
+  function recordDrawnCard(quote){
+    var now=new Date();
+    drawnCards.push({ id:now.getTime()+"-"+Math.random().toString(36).slice(2,6), ts:now.getTime(),
+      dateKey:keyOf(now), time:fmtTime(now), quoteId:quote.id, quoteSource:quote.source,
+      quote:quote.t, author:quote.a, custom:!!quote.custom });
+    drawnCards = normalizeDraws(drawnCards);
+    persistState();
+  }
   function reveal(idx){
     var q=QUOTES[idx];
     var drawId = quoteIdAt(idx);
@@ -280,6 +479,7 @@ document.addEventListener('DOMContentLoaded', function () {
     lastQuoteId=drawId;
     testHook.lastDrawId = drawId;
     testHook.drawCount = (testHook.drawCount || 0) + 1;
+    recordDrawnCard(currentQuote);
     quoteCard.dataset.state = "revealed";
     quoteCard.dataset.density = q.t.length > 220 ? "dense" : q.t.length > 130 ? "long" : "normal";
     quoteText.textContent=q.t; quoteAuthor.textContent=currentQuote.a;
@@ -417,7 +617,7 @@ document.addEventListener('DOMContentLoaded', function () {
     openSheet(addRoot,qText);
   });
   document.getElementById("addCancel").addEventListener("click",function(){ closeSheet(addRoot); });
-  qText.addEventListener("input",function(){ textCount.textContent=qText.value.length+"/120"; if(qText.value.trim()) addField.classList.remove("error"); });
+	  qText.addEventListener("input",function(){ textCount.textContent=qText.value.length+"/120"; if(qText.value.trim()) addField.classList.remove("error"); });
   document.getElementById("addSave").addEventListener("click",function(){
     var t=qText.value.trim();
     if(!t){ addField.classList.add("error"); addField.classList.remove("shake"); void addField.offsetWidth; addField.classList.add("shake"); qText.focus(); return; }
@@ -426,16 +626,21 @@ document.addEventListener('DOMContentLoaded', function () {
     QUOTES.push({id:customId,t:t,a:a,custom:true,source:"local"});
     quoteBag=[];
     customQuotes.push({id:customId,t:t,a:a});
-    if(!lsSet(QKEY,customQuotes)){
-      customQuotes.pop(); QUOTES.pop(); quoteBag=[];
-      showToast("저장 공간을 사용할 수 없어 추가하지 못했어요");
-      return;
-    }
-    closeSheet(addRoot);
-    showToast("명언이 덱에 추가됐어요");
-    live.textContent="명언이 덱에 추가되었습니다. 이제 "+QUOTES.length+"개 카드 중에서 뽑습니다.";
-    testHook.customQuoteCount = customQuotes.length;
-    testHook.totalQuoteCount = QUOTES.length;
+    customQuotes = normalizeQuotes(customQuotes);
+    persistState(function(ok){
+      if(!ok){
+        customQuotes=customQuotes.filter(function(quote){ return quote.id !== customId; });
+        QUOTES=QUOTES.filter(function(quote){ return quote.id !== customId; });
+        quoteBag=[]; updateStorageHook();
+        showToast("저장 공간을 사용할 수 없어 추가하지 못했어요");
+        return;
+      }
+      closeSheet(addRoot);
+      showToast("명언이 덱에 추가됐어요");
+      live.textContent="명언이 덱에 추가되었습니다. 이제 "+QUOTES.length+"개 카드 중에서 뽑습니다.";
+      testHook.customQuoteCount = customQuotes.length;
+      testHook.totalQuoteCount = QUOTES.length;
+    });
   });
 
   /* ===================== 내 생각 메모 ===================== */
@@ -460,14 +665,18 @@ document.addEventListener('DOMContentLoaded', function () {
       dateKey:keyOf(now), time:fmtTime(now), quoteId:currentQuote.id, quoteSource:currentQuote.source,
       quote:currentQuote.t, author:currentQuote.a, thought:th };
     memos.push(memo);
-    if(!lsSet(MEMO_KEY,memos)){
-      memos.pop();
-      showToast("저장 공간을 사용할 수 없어 메모를 저장하지 못했어요");
-      return;
-    }
-    closeSheet(memoRoot);
-    showToast("메모를 저장했어요");
-    live.textContent="오늘의 메모가 저장되었습니다.";
+    memos = normalizeMemos(memos);
+    persistState(function(ok){
+      if(!ok){
+        memos=memos.filter(function(item){ return item.id !== memo.id; });
+        updateStorageHook();
+        showToast("저장 공간을 사용할 수 없어 메모를 저장하지 못했어요");
+        return;
+      }
+      closeSheet(memoRoot);
+      showToast("메모를 저장했어요");
+      live.textContent="오늘의 메모가 저장되었습니다.";
+    });
   });
 
   /* ===================== 메모 달력 ===================== */
@@ -529,11 +738,12 @@ document.addEventListener('DOMContentLoaded', function () {
   function showToast(msg){ toastMsg.textContent=msg; toast.classList.add("show"); clearTimeout(toastTimer); toastTimer=setTimeout(function(){ toast.classList.remove("show"); },2600); }
 
   /* ===================== init ===================== */
-  testHook.publicQuoteCount = BASE_QUOTES.length;
-  testHook.totalQuoteCount = QUOTES.length;
-  measure(); buildDeck();
-  window.addEventListener("resize",measure);
-  tick(); setInterval(tick,1000/60);
+	  testHook.publicQuoteCount = BASE_QUOTES.length;
+	  testHook.totalQuoteCount = QUOTES.length;
+	  measure(); buildDeck();
+	  window.addEventListener("resize",measure);
+	  requestBridgeState();
+	  tick(); setInterval(tick,1000/60);
   if(typeof window.updateMobileViewportStatus === "function") window.updateMobileViewportStatus();
 })();
 });
