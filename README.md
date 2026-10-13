@@ -1,13 +1,15 @@
 # Daily Quote Card
 
-Twelve original reflections, photographic cards, and a private note for each thought. English by default, with an optional Korean interface. No account is required.
+Twelve original reflections, a moving photographic card deck, and a private calendar of your thoughts. English by default, with an optional Korean interface. No account is required.
 
 [Try the live app](https://daily-quote-card.pages.dev/)
 
 ## Features
 
-- Draw all twelve cards before a card repeats.
-- Save a card and write a note; both stay in this browser on this device.
+- Pull a photo card down from the spinning deck, or use the draw button or keyboard.
+- Draw all twelve cards before a card repeats; swipe a revealed card down to dismiss it.
+- Write a dated thought for a drawn card. Browse marked calendar days to revisit that day's cards and thoughts.
+- Add your own quote to the deck. Quotes, thoughts, history and bookmarks stay in this browser on this device.
 - Share a reflection through your browser's native sharing or clipboard support.
 - Read cached cards offline after the first complete online visit.
 - Install on supported browsers using the browser's app or Home Screen controls.

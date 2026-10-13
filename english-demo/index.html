@@ -8,12 +8,113 @@
 <link rel="stylesheet" href="aquila.css"><link rel="stylesheet" href="style.css">
 <script type="module" src="app.js"></script>
 </head>
-<body><a class="skip" href="#reflection">Skip to card</a><main class="shell">
+<body><a class="skip" href="#deck">Skip to deck</a><main class="shell">
 <header class="masthead"><a href="./" class="brand" aria-label="Daily Quote Card home"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 5h9a5 5 0 0 1 5 5v9H10a5 5 0 0 1-5-5Z"/><path d="m9 14 6-6M10 9h5v5"/></svg>Daily Quote Card</a><label class="language"><span class="sr-only">Language</span><select id="language"><option value="en">English</option><option value="ko">한국어</option></select></label></header>
 <section class="intro"><p class="eyebrow" data-i18n="eyebrow">A FRESH PERSPECTIVE</p><h1 data-i18n="heading">A thought for today.</h1><p data-i18n="subheading">Twelve original reflections. A moment to make one your own.</p></section>
-<article class="reflection" id="reflection" aria-labelledby="quote-text"><div id="media" class="media"></div><div class="card-body"><div class="card-meta"><span id="theme"></span><span id="counter"></span></div><h2 id="quote-text" tabindex="-1"></h2><p class="attribution" data-i18n="author">Original reflection</p><div class="actions"><button id="next" class="primary" data-i18n="next">Draw a card <span aria-hidden="true">↗</span></button><button id="bookmark" class="icon-button" aria-label="Save card" aria-pressed="false"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" aria-hidden="true"><path d="M6 4h12v17l-6-4-6 4Z"/></svg></button><button id="share" class="icon-button" aria-label="Share card"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3m-4 4 4-4 4 4M5 12v8h14v-8"/></svg></button></div></div></article>
-<section class="journal"><div class="section-heading"><label for="note" data-i18n="journal">A note to yourself</label><span id="note-status" class="small" role="status"></span></div><textarea id="note" maxlength="2000" rows="3" placeholder="What does this bring to mind?"></textarea><p class="small" data-i18n="privacy">Your notes stay in this browser, on this device.</p></section>
+<div class="toolbar">
+  <button id="openCal" type="button" aria-haspopup="dialog" aria-label="Card history"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4.5" width="18" height="16" rx="3"/><path d="M3 9h18M8 2.5v4M16 2.5v4"/></svg><span data-i18n="history">History</span></button>
+  <button id="openAddTop" type="button" aria-haspopup="dialog" aria-label="Add quote"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span data-i18n="addQuote">Add quote</span></button>
+</div>
+<section class="stage" id="stage">
+  <div class="deck" id="deck" role="button" tabindex="0" aria-label="Quote card deck. Drag a card down, or press Enter to draw." aria-keyshortcuts="Enter Space">
+    <div class="belt" id="belt"></div>
+    <div class="card draw" id="drawCard" aria-hidden="true" style="opacity:0"></div>
+  </div>
+  <p class="hint" id="hint"><span class="dot"></span>Pull a card down to draw</p>
+  <section class="result" id="result">
+    <p class="ready-state sr-only" id="ready" data-i18n="readyText">Pick one card from the flowing deck — today’s reflection arrives.</p>
+    <article class="quote-card" id="quoteCard" data-state="ready" hidden>
+      <button class="quote-dismiss" id="quoteDismiss" type="button" aria-label="Dismiss card"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+      <div class="quote-media" id="quoteMedia"></div>
+      <div class="quote-body">
+        <div class="card-meta"><span id="quoteTheme"></span><span id="quoteIndex"></span></div>
+        <p class="quote-text" id="quoteText" tabindex="-1"></p>
+        <p class="attribution"><span id="quoteAuthor"></span></p>
+        <div class="quote-actions" id="memoCta" hidden>
+          <button class="primary" id="memoBtn" type="button" data-i18n="memoCta">Write your thought</button>
+          <button id="bookmark" class="icon-button" type="button" aria-label="Save card" aria-pressed="false"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" aria-hidden="true"><path d="M6 4h12v17l-6-4-6 4Z"/></svg></button>
+          <button id="share" class="icon-button" type="button" aria-label="Share card"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3m-4 4 4-4 4 4M5 12v8h14v-8"/></svg></button>
+        </div>
+      </div>
+    </article>
+  </section>
+</section>
+<button class="primary draw-button" id="drawButton" type="button" data-i18n="next">Draw a card <span aria-hidden="true">↗</span></button>
 <section class="tools" aria-label="App options"><button id="install" data-i18n="install">Install app</button><button id="notify" data-i18n="notify">Try a test notification</button></section><p id="status" class="status" role="status" aria-live="polite"></p>
 <details class="help"><summary data-i18n="help">About Daily Quote Card</summary><p data-i18n="about">Twelve original reflections written for this app. Saved cards and notes are stored only in this browser.</p><p data-i18n="notificationHelp">Notifications here are an immediate, optional test. Daily or background push reminders are not enabled. On iPhone/iPad, notification support requires iOS/iPadOS 16.4 or later and a Home Screen installation; device settings still apply.</p><p data-i18n="offlineHelp">Cards can be read offline after your first online visit. Clearing browser storage removes saved notes.</p></details>
 <footer>Daily Quote Card <span aria-hidden="true">/</span> <span data-i18n="footer">Made by Haeminway</span></footer>
-</main><dialog id="install-help"><form method="dialog"><h2 data-i18n="installTitle">Add Daily Quote Card to your Home Screen</h2><p data-i18n="installHelp">On iPhone/iPad: open this page in Safari, tap Share, then Add to Home Screen. On other browsers, look for Install app in the browser menu. Availability depends on your browser.</p><button class="primary" data-i18n="close">Got it</button></form></dialog></body></html>
+</main>
+<!-- ============ sheet: add a quote ============ -->
+<div class="sheet-root" id="addRoot" hidden>
+  <div class="backdrop" data-close></div>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="addTitle">
+    <div class="grabber"></div>
+    <h2 id="addTitle" data-i18n="addTitle">Add a quote</h2>
+    <p class="sub" data-i18n="addSub">Add your own good thought to the deck.</p>
+    <div class="field" id="addField">
+      <label for="qText"><span data-i18n="qTextLabel">Quote</span><span class="counter" id="textCount">0/120</span></label>
+      <textarea id="qText" maxlength="120" rows="3" aria-describedby="textErr"></textarea>
+      <p class="err-msg" id="textErr" data-i18n="errQuote">Please enter the quote text.</p>
+    </div>
+    <div class="field">
+      <label for="qAuthor"><span data-i18n="qAuthorLabel">Author or source</span> <span class="opt" data-i18n="opt">(optional)</span></label>
+      <input id="qAuthor" type="text" maxlength="40" />
+    </div>
+    <div class="sheet-actions">
+      <button class="btn cancel" id="addCancel" type="button" data-i18n="cancel">Cancel</button>
+      <button class="btn primary" id="addSave" type="button" data-i18n="add">Add</button>
+    </div>
+  </div>
+</div>
+<!-- ============ sheet: your thought ============ -->
+<div class="sheet-root" id="memoRoot" hidden>
+  <div class="backdrop" data-close></div>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="memoTitle">
+    <div class="grabber"></div>
+    <h2 id="memoTitle" data-i18n="memoTitle">Your thought</h2>
+    <p class="sub" id="memoWhen"></p>
+    <div class="memo-quote">
+      <p class="mq-text" id="memoQuoteText"></p>
+      <p class="mq-author" id="memoQuoteAuthor"></p>
+    </div>
+    <div class="field" id="memoField">
+      <label for="memoText"><span data-i18n="memoLabel">Your thought</span><span class="counter" id="memoCount">0/300</span></label>
+      <textarea id="memoText" maxlength="300" rows="4" aria-describedby="memoErr"></textarea>
+      <p class="err-msg" id="memoErr" data-i18n="errMemo">Please enter your thought.</p>
+    </div>
+    <div class="sheet-actions">
+      <button class="btn cancel" id="memoCancel" type="button" data-i18n="cancel">Cancel</button>
+      <button class="btn primary" id="memoSave" type="button" data-i18n="saveBtn">Save</button>
+    </div>
+  </div>
+</div>
+<!-- ============ sheet: card history calendar ============ -->
+<div class="sheet-root" id="calRoot" hidden>
+  <div class="backdrop" data-close></div>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="calTitle">
+    <div class="grabber"></div>
+    <div id="calMonthView">
+      <div class="cal-head"><h2 id="calTitle" data-i18n="calTitle">Card history</h2></div>
+      <div class="cal-nav">
+        <button class="cal-arrow" id="calPrev" type="button" aria-label="Previous month">‹</button>
+        <span class="cal-month" id="calMonthLabel"></span>
+        <button class="cal-arrow" id="calNext" type="button" aria-label="Next month">›</button>
+      </div>
+      <div class="cal-week" id="calWeek"></div>
+      <div class="cal-grid" id="calGrid"></div>
+      <p class="cal-empty" id="calEmpty" data-i18n="calEmpty" hidden>No cards or notes this month.</p>
+    </div>
+    <div id="calDayView" hidden>
+      <div class="cal-head"><button class="cal-back" id="calBack" type="button" data-i18n="calBack">‹ Back to month</button></div>
+      <h2 id="calDayTitle"></h2>
+      <div class="day-list" id="dayList"></div>
+    </div>
+  </div>
+</div>
+<!-- toast -->
+<div class="toast" id="toast" role="status" aria-live="polite">
+  <span class="tick"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+  <span id="toastMsg"></span>
+</div>
+<div class="vh" id="live" aria-live="polite" role="status"></div>
+<dialog id="install-help"><form method="dialog"><h2 data-i18n="installTitle">Add Daily Quote Card to your Home Screen</h2><p data-i18n="installHelp">On iPhone/iPad: open this page in Safari, tap Share, then Add to Home Screen. On other browsers, look for Install app in the browser menu. Availability depends on your browser.</p><button class="primary" data-i18n="close">Got it</button></form></dialog></body></html>
