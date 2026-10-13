@@ -1,13 +1,13 @@
 # Daily Quote Card
 
-Twelve original reflections, a moving photographic card deck, and a private calendar of your thoughts. English by default, with an optional Korean interface. No account is required.
+103 quotes from the original deck, illustrated card art, and a private calendar of your thoughts. English by default, with the original Korean text and authors available through the language switch. No account is required.
 
 [Try the live app](https://daily-quote-card.pages.dev/)
 
 ## Features
 
 - Pull a photo card down from the spinning deck, or use the draw button or keyboard.
-- Draw all twelve cards before a card repeats; swipe a revealed card down to dismiss it.
+- Draw all 103 cards before a card repeats; swipe a revealed card down to dismiss it.
 - Write a dated thought for a drawn card. Browse marked calendar days to revisit that day's cards and thoughts.
 - Add your own quote to the deck. Quotes, thoughts, history and bookmarks stay in this browser on this device.
 - Share a reflection through your browser's native sharing or clipboard support.
@@ -26,7 +26,7 @@ python3 -m http.server 4187 --directory english-demo
 
 Open `http://localhost:4187/`. Production service workers and notifications require HTTPS. Clearing browser storage removes saved notes and cards.
 
-All twelve English reflections were written for this app and are labeled “Original reflection.” The editorial photographs were created with AI. The older Korean GAS implementation remains in `src/` and `wrapper/`; the new public app has its own origin and does not change that deployment.
+The deck preserves the original quote IDs and includes English authors and work-or-source lines. The illustrations were created with AI; unfinished individual artwork uses the matching approved style sample. The older Korean GAS implementation remains in `src/` and `wrapper/`; the new public app has its own origin and does not change that deployment.
 
 ## License
 

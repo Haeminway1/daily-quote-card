@@ -1,10 +1,21 @@
-const CACHE = 'daily-quote-card-shell-v3';
+const CACHE = 'daily-quote-card-shell-v4-dde19042502c645d';
 const BASE = new URL('./',self.location.href);
 const CORE = ['./','index.html','style.css','aquila.css','app.js','deck.json','manifest.webmanifest','icons/icon-192.png','icons/icon-512.png'].map(p=>new URL(p,BASE).href);
 self.addEventListener('install',event => event.waitUntil((async()=>{
   const cache=await caches.open(CACHE);await cache.addAll(CORE);
-  const response=await cache.match(new URL('deck.json',BASE).href);const deck=await response.json();
-  await Promise.all(deck.quotes.filter(q=>q.imageAvailable).map(q=>cache.add(new URL(`images/${q.image}`,BASE).href)));
+  try{
+    const response=await cache.match(new URL('deck.json',BASE).href);const deck=await response.json();
+    const seen=new Set(),urls=[];
+    (deck&&Array.isArray(deck.quotes)?deck.quotes:[]).forEach(q=>{
+      if(q&&q.imageAvailable&&typeof q.image==='string'&&q.image){
+        const u=new URL(`images/${q.image}`,BASE).href;
+        if(!seen.has(u)){seen.add(u);urls.push(u);}
+      }
+    });
+    for(let i=0;i<urls.length;i+=4){
+      await Promise.all(urls.slice(i,i+4).map(u=>cache.add(u).catch(()=>null)));
+    }
+  }catch(e){/* image precache is best-effort; the shell is already installed */}
   await self.skipWaiting();
 })()));
 self.addEventListener('activate',event=>event.waitUntil((async()=>{

@@ -8,7 +8,7 @@ const MEMO_KEY = 'daily-quote-card.memos.v2';
 const DRAWN_KEY = 'daily-quote-card.drawn.v2';
 const MIGRATION_KEY = 'daily-quote-card.migration.v1';
 const strings = {
-  en: {eyebrow:'A FRESH PERSPECTIVE',heading:'A thought for today.',subheading:'Twelve original reflections. A moment to make one your own.',author:'Original reflection',
+  en: {eyebrow:'A FRESH PERSPECTIVE',heading:'A thought for today.',subheading:'A deck of 103 original quotes. A moment to make one your own.',
     next:'Draw a card <span aria-hidden="true">↗</span>',history:'History',addQuote:'Add quote',
     readyText:'Pick one card from the flowing deck — today’s reflection arrives.',
     deckLabel:'Quote card deck. Drag a card down, or press Enter to draw.',
@@ -29,9 +29,10 @@ const strings = {
     importedNote:'Imported note · original date unavailable',
     importedAt:(s)=>"Imported at "+s+" · original date unavailable",
     newCard:'New card:',dismissed:'Card dismissed. You can draw a new one.',
+    scrollHint:'Scroll to read the full quote ↓',
     cellLabel:(mon,d,n)=>`${mon} ${d} — ${n===1?'1 entry':n+' entries'}`,
     install:'Install app',notify:'Try a test notification',help:'About Daily Quote Card',
-    about:'Twelve original reflections written for this app. Saved cards and notes are stored only in this browser.',
+    about:'A collection of 103 original quotes with author and source, in English and Korean. Saved cards and notes are stored only in this browser.',
     notificationHelp:'Notifications here are an immediate, optional test. Daily or background push reminders are not enabled. On iPhone/iPad, notification support requires iOS/iPadOS 16.4 or later and a Home Screen installation; device settings still apply.',
     offlineHelp:'Cards can be read offline after your first online visit. Clearing browser storage removes saved notes.',
     footer:'Made by Haeminway',installTitle:'Add Daily Quote Card to your Home Screen',
@@ -48,7 +49,7 @@ const strings = {
     notifyFail:'A notification could not be sent. Check device and browser settings.',
     installed:'Already running as an installed app.',offline:'You are offline. Cached cards are still available.',
     ready:'Ready for a fresh perspective.',counter:(n,of)=>`Card ${n} of ${of}`},
-  ko: {eyebrow:'오늘을 위한 새로운 시선',heading:'오늘의 생각 한 장.',subheading:'직접 쓴 열두 가지 생각. 나만의 의미를 더해보세요.',author:'직접 쓴 생각',
+  ko: {eyebrow:'오늘을 위한 새로운 시선',heading:'오늘의 생각 한 장.',subheading:'103편의 명언과 그 출처. 나만의 의미를 더해보세요.',
     next:'카드 뽑기 <span aria-hidden="true">↗</span>',history:'기록',addQuote:'명언 추가',
     readyText:'흐르는 카드 중 마음에 닿는 한 장을 뽑아보세요. 오늘의 좋은 생각이 도착합니다.',
     deckLabel:'명언 카드 덱. 카드를 아래로 당기거나 Enter를 눌러 뽑으세요.',
@@ -69,9 +70,10 @@ const strings = {
     importedNote:'가져온 메모 · 원래 날짜는 알 수 없어요',
     importedAt:(s)=>s+" 에 가져옴 · 원래 날짜는 알 수 없어요",
     newCard:'새 카드:',dismissed:'명언 카드를 내렸습니다. 새 카드를 뽑을 수 있습니다.',
+    scrollHint:'아래로 스크롤해 전체 문구 읽기 ↓',
     cellLabel:(mon,d,n)=>`${mon} ${d}일, 기록 ${n}개`,
     install:'앱 설치',notify:'테스트 알림 보내기',help:'Daily Quote Card 소개',
-    about:'이 앱을 위해 직접 쓴 열두 가지 생각입니다. 저장한 카드와 메모는 이 브라우저에만 보관됩니다.',
+    about:'작가와 출처가 있는 103편의 명언을 영어와 한국어로 모았습니다. 저장한 카드와 메모는 이 브라우저에만 보관됩니다.',
     notificationHelp:'알림은 선택해서 즉시 보내는 테스트입니다. 매일 알림이나 백그라운드 푸시는 제공하지 않습니다. iPhone/iPad는 iOS/iPadOS 16.4 이상에서 홈 화면 설치가 필요하며, 기기 설정에 따라 달라집니다.',
     offlineHelp:'온라인으로 한 번 방문하면 오프라인에서도 카드를 읽을 수 있습니다. 브라우저 저장 공간을 지우면 메모도 삭제됩니다.',
     footer:'Haeminway 제작',installTitle:'홈 화면에 Daily Quote Card 추가',
@@ -128,7 +130,7 @@ function normalizeMemos(list){
     return { id:safeString(m.id || (Date.now()+"-"+Math.random().toString(36).slice(2,6)),80), ts:Number.isFinite(ts)?ts:Date.now(),
       dateKey:safeString(m.dateKey || keyOf(new Date()),16), time:safeString(m.time || "",24),
       quoteId:safeString(m.quoteId || "",80), quoteSource:safeString(m.quoteSource || "",32),
-      quote:safeString(m.quote || "",400), author:safeString(m.author || "",80), thought:safeString(m.thought,300),
+      quote:safeString(m.quote || "",2000), author:safeString(m.author || "",80), thought:safeString(m.thought,300),
       drawId:safeString(m.drawId || "",80), imported:!!m.imported };
   });
 }
@@ -138,7 +140,7 @@ function normalizeDraws(list){
     return { id:safeString(d.id || (Date.now()+"-"+Math.random().toString(36).slice(2,6)),80), ts:Number.isFinite(ts)?ts:Date.now(),
       dateKey:safeString(d.dateKey || keyOf(new Date()),16), time:safeString(d.time || "",24),
       quoteId:safeString(d.quoteId || "",80), quoteSource:safeString(d.quoteSource || "",32),
-      quote:safeString(d.quote || "",400), author:safeString(d.author || "",80), custom:!!d.custom };
+      quote:safeString(d.quote || "",2000), author:safeString(d.author || "",80), custom:!!d.custom };
   });
 }
 function writeLocalState(){
@@ -201,6 +203,35 @@ function rebuildQuotes(resetBag){
   if(resetBag) quoteBag=[];
   updateStorageHook();
 }
+var legacyIdMap={};
+function buildLegacyIdMap(){
+  legacyIdMap={};
+  BASE_QUOTES.forEach(function(q){
+    var m=/^q(\d{3})$/.exec(q.id||"");
+    if(m){ var n=parseInt(m[1],10); if(n>=1&&n<100) legacyIdMap["q"+(n<10?"0":"")+n]=q.id; }
+  });
+}
+function remapQuoteId(id){ return legacyIdMap[id]||id; }
+function remapStoredQuoteIds(){
+  if(state.saved.length){
+    var mapped=state.saved.map(remapQuoteId), diff=false;
+    for(var i=0;i<mapped.length;i++) if(mapped[i]!==state.saved[i]){ diff=true; break; }
+    if(diff){
+      state.saved=mapped.filter(function(x,j){ return mapped.indexOf(x)===j; });
+      persistPrefs();
+    }
+  }
+  var touched=false;
+  function remapList(list){
+    list.forEach(function(item){
+      if(item&&(item.quoteSource==="default"||item.quoteSource==="imported")&&legacyIdMap[item.quoteId]){
+        item.quoteId=legacyIdMap[item.quoteId]; touched=true;
+      }
+    });
+  }
+  remapList(memos); remapList(drawnCards);
+  if(touched) writeLocalState();
+}
 function migrateLegacyNotes(){
   var done=false;
   try{ done=!!window.localStorage.getItem(MIGRATION_KEY); }catch(e){ done=true; }
@@ -210,11 +241,12 @@ function migrateLegacyNotes(){
   if(ids.length){
     var now=new Date(), stamp=now.getTime();
     ids.forEach(function(qid,i){
+      var pid=remapQuoteId(qid);
       var q=null;
-      for(var j=0;j<BASE_QUOTES.length;j++){ if(BASE_QUOTES[j].id===qid){ q=BASE_QUOTES[j]; break; } }
+      for(var j=0;j<BASE_QUOTES.length;j++){ if(BASE_QUOTES[j].id===pid){ q=BASE_QUOTES[j]; break; } }
       memos.push({ id:"import-"+stamp+"-"+i, ts:stamp+i, dateKey:keyOf(now), time:fmtTime(now),
-        quoteId:safeString(qid,80), quoteSource:"imported",
-        quote:q?(state.lang==="ko"&&q.ko?q.ko:q.t):"", author:q?safeString(q.a,80):"",
+        quoteId:safeString(pid,80), quoteSource:"imported",
+        quote:q?(state.lang==="ko"&&q.ko?q.ko:q.t):"", author:q?safeString(state.lang==="ko"?(q.a_ko||q.a):q.a,80):"",
         thought:safeString(notes[qid],300), drawId:"", imported:true });
     });
     memos = normalizeMemos(memos);
@@ -227,7 +259,8 @@ function migrateLegacyNotes(){
 var deck=$("deck"), belt=$("belt"), drawCard=$("drawCard");
 var deckArea=deck?deck.closest(".stage"):null;
 var hint=$("hint"), ready=$("ready");
-var quoteCard=$("quoteCard"), quoteText=$("quoteText"), quoteAuthor=$("quoteAuthor");
+var quoteCard=$("quoteCard"), quoteText=$("quoteText"), quoteAuthor=$("quoteAuthor"), quoteSource=$("quoteSource");
+var quoteScroll=$("quoteScroll"), quoteScrollHint=$("quoteScrollHint");
 var quoteTheme=$("quoteTheme"), quoteIndex=$("quoteIndex"), quoteMedia=$("quoteMedia");
 var quoteDismiss=$("quoteDismiss"), result=$("result");
 var memoCta=$("memoCta"), live=$("live"), drawButton=$("drawButton");
@@ -243,14 +276,22 @@ function measure(){
   cx=deck.clientWidth/2; HALF=cx;
   ARC_H=(HALF*Math.tan(MAX_TILT*Math.PI/180))/2;
 }
+var cardImageIdx=[], cardPrevX=[], nextBeltImage=0;
 function cardInner(i){
-  var img=beltImages.length?beltImages[i%beltImages.length]:"";
-  return img ? '<img class="card-img" src="images/'+img+'" alt="" draggable="false">'
+  var img=(beltImages.length&&cardImageIdx[i]>=0)?beltImages[cardImageIdx[i]]:"";
+  return img ? '<img class="card-img" src="images/'+img+'" alt="" draggable="false" loading="lazy" decoding="async">'
              : '<span class="card-img card-fallback"></span>';
 }
+function reassignCardImage(i){
+  if(!beltImages.length) return;
+  cardImageIdx[i]=nextBeltImage; nextBeltImage=(nextBeltImage+1)%beltImages.length;
+  var im=cards[i].querySelector("img.card-img");
+  if(im) im.src="images/"+beltImages[cardImageIdx[i]]; else cards[i].innerHTML=cardInner(i);
+}
 function buildDeck(){
-  belt.innerHTML=""; cards=[];
-  for(var i=0;i<N;i++){ var c=document.createElement("div"); c.className="card belt-card"; c.innerHTML=cardInner(i); belt.appendChild(c); cards.push(c); }
+  belt.innerHTML=""; cards=[]; cardImageIdx=[]; cardPrevX=[];
+  nextBeltImage=beltImages.length?N%beltImages.length:0;
+  for(var i=0;i<N;i++){ cardImageIdx[i]=beltImages.length?i%beltImages.length:-1; var c=document.createElement("div"); c.className="card belt-card"; c.innerHTML=cardInner(i); belt.appendChild(c); cards.push(c); }
   drawCard.innerHTML=cardInner(0);
 }
 function clamp(v,a,b){ return v<a?a:(v>b?b:v); }
@@ -282,7 +323,12 @@ function tick(){
   if(!lastT) lastT=now;
   var dt=Math.min(0.05,(now-lastT)/1000); lastT=now;
   if(spinning&&!holding){ pos-=SPEED*dt; if(pos<-SPAN) pos+=SPAN; }
-  for(var i=0;i<N;i++){ if(holding&&i===centerIdx) continue; apply(cards[i],styleFor(beltX(i))); }
+  for(var i=0;i<N;i++){
+    var x=beltX(i);
+    if(cardPrevX[i]!=null&&Math.abs(x-cardPrevX[i])>SPAN/2) reassignCardImage(i);
+    cardPrevX[i]=x;
+    if(holding&&i===centerIdx) continue; apply(cards[i],styleFor(x));
+  }
 }
 
 /* ===================== grab / draw ===================== */
@@ -451,11 +497,12 @@ function doDraw(source){
   window.setTimeout(finish,940);
 }
 
-var currentQuote={id:"",en:"",ko:"",a:"",theme:"",image:"",imageAvailable:false,source:"",custom:false,drawId:"",idx:-1};
+var currentQuote={id:"",en:"",ko:"",a:"",a_ko:"",work:"",theme:"",image:"",imageAvailable:false,source:"",custom:false,drawId:"",idx:-1};
 function quoteDisplayText(){ return state.lang==="ko"&&currentQuote.ko ? currentQuote.ko : currentQuote.en; }
 function quoteDisplayAuthor(){
   if(currentQuote.custom) return currentQuote.a || t("unknownAuthor");
-  return (currentQuote.a && currentQuote.a!=="Original reflection") ? currentQuote.a : t("author");
+  var name=state.lang==="ko" ? (currentQuote.a_ko||currentQuote.a) : currentQuote.a;
+  return name || t("unknownAuthor");
 }
 function recordDrawnCard(quote){
   var now=new Date();
@@ -473,26 +520,31 @@ function showQuotePending(){
   quoteMedia.replaceChildren(el);
 }
 function updateQuoteCardContent(){
-  quoteText.textContent=quoteDisplayText();
+  var text=quoteDisplayText();
+  quoteText.textContent=text;
+  quoteCard.dataset.density = text.length > 220 ? "dense" : text.length > 130 ? "long" : "normal";
   quoteAuthor.textContent=quoteDisplayAuthor();
   var old=quoteCard.querySelector(".quote-badge"); if(old) old.remove();
   if(currentQuote.custom){ var b=document.createElement("span"); b.className="quote-badge"; b.textContent=t("yourQuote"); quoteAuthor.appendChild(b); }
   quoteTheme.textContent=currentQuote.custom ? t("yourQuote") : (state.lang==="ko" ? "오늘의 생각" : currentQuote.theme);
   quoteIndex.textContent=t("counter")(currentQuote.idx+1,QUOTES.length);
+  var src=(!currentQuote.custom&&currentQuote.work)?currentQuote.work:"";
+  quoteSource.textContent=src; quoteSource.hidden=!src;
   quoteMedia.replaceChildren();
   if(currentQuote.imageAvailable&&currentQuote.image){
-    var img=new Image(); img.src="images/"+currentQuote.image; img.alt=""; img.decoding="async";
+    var img=new Image(); img.src="images/"+currentQuote.image; img.alt=""; img.decoding="async"; img.loading="eager";
     img.addEventListener("error",function(){ showQuotePending(); });
     quoteMedia.append(img);
   }else showQuotePending();
   var saved=state.saved.indexOf(currentQuote.id)!==-1;
   bookmarkBtn.setAttribute("aria-pressed",String(saved));
   bookmarkBtn.setAttribute("aria-label",t(saved?"unsave":"save"));
+  measureQuoteScroll();
 }
 function reveal(idx){
   var q=QUOTES[idx];
   var drawId = quoteIdAt(idx);
-  currentQuote={id:drawId,en:q.t,ko:q.ko||"",a:q.a||"",theme:q.theme||"",image:q.image||"",
+  currentQuote={id:drawId,en:q.t,ko:q.ko||"",a:q.a||"",a_ko:q.a_ko||"",work:q.work||"",theme:q.theme||"",image:q.image||"",
     imageAvailable:!!q.imageAvailable,source:q.source||(q.custom?"local":"default"),custom:!!q.custom,drawId:"",idx:idx};
   lastQuoteId=drawId;
   testHook.lastDrawId = drawId;
@@ -500,11 +552,11 @@ function reveal(idx){
   currentQuote.drawId=recordDrawnCard(currentQuote);
   quoteCard.dataset.state = "revealed";
   var text=quoteDisplayText();
-  quoteCard.dataset.density = text.length > 220 ? "dense" : text.length > 130 ? "long" : "normal";
   updateQuoteCardContent();
   result.classList.add("is-revealed");
   result.style.transform=""; result.style.opacity="";
   ready.hidden=true; quoteCard.hidden=false; memoCta.hidden=false;
+  if(quoteScroll) quoteScroll.scrollTop=0;
   deck.classList.add("is-background");
   if(deckArea) deckArea.classList.add("is-revealed");
   quoteCard.classList.remove("anim-in"); void quoteCard.offsetWidth; quoteCard.classList.add("anim-in");
@@ -559,19 +611,44 @@ if(window.PointerEvent){
 deck.addEventListener("keydown",function(e){ if(e.key==="Enter"||e.key===" "||e.key==="Spacebar"){ e.preventDefault(); doDraw("keyboard"); } });
 drawButton.addEventListener("click",function(){ doDraw("button"); });
 
-var quoteDragging=false, quoteStartY=0, quoteDy=0, quotePointerId=null, quoteStartScroll=0;
+var quoteDragging=false, quoteStartY=0, quoteDy=0, quotePointerId=null;
+var quoteScrollRaf=0;
+var quoteScrollMeasureKey="";
+function updateQuoteScrollState(){
+  quoteScrollRaf=0;
+  if(!quoteScroll||!quoteScrollHint) return;
+  var nextKey=currentQuote.id+"|"+state.lang+"|"+quoteCard.clientWidth+"|"+quoteCard.clientHeight;
+  if(nextKey!==quoteScrollMeasureKey){
+    quoteScrollMeasureKey=nextKey; quoteScrollHint.hidden=true;
+    quoteScroll.classList.remove("is-over","has-more","has-above");
+  }
+  var over=quoteScroll.scrollHeight>quoteScroll.clientHeight+1;
+  var atEnd=!over||quoteScroll.scrollTop+quoteScroll.clientHeight>=quoteScroll.scrollHeight-1;
+  quoteScroll.classList.toggle("is-over",over);
+  quoteScroll.classList.toggle("has-more",over&&!atEnd);
+  quoteScroll.classList.toggle("has-above",over&&quoteScroll.scrollTop>1);
+  quoteScrollHint.hidden=!over;
+  quoteScrollHint.classList.toggle("is-off",over&&atEnd);
+}
+function measureQuoteScroll(){
+  if(!quoteScroll||quoteScrollRaf) return;
+  if(window.requestAnimationFrame) quoteScrollRaf=requestAnimationFrame(updateQuoteScrollState);
+  else updateQuoteScrollState();
+}
 function quoteClientY(e){ return e.touches?e.touches[0].clientY:e.clientY; }
+function quoteScrollEl(target){
+  var s=target&&target.closest?target.closest(".quote-scroll"):null;
+  return (s&&s.scrollHeight>s.clientHeight+1)?s:null;
+}
 function onQuoteDown(e){
   if(quoteCard.hidden || e.target.closest("button,textarea,input,a")) return;
-  quoteStartScroll=quoteCard.scrollTop || 0;
-  if(quoteStartScroll>0) return;
+  if(quoteScrollEl(e.target)) return;
   quoteDragging=true; quoteDy=0; quoteStartY=quoteClientY(e); quotePointerId=e.pointerId;
   result.classList.add("is-dragging");
   if(e.pointerId!=null&&quoteCard.setPointerCapture){ try{quoteCard.setPointerCapture(e.pointerId);}catch(_){} }
 }
 function onQuoteMove(e){
   if(!quoteDragging) return;
-  if(quoteStartScroll>0){ quoteDragging=false; result.classList.remove("is-dragging"); return; }
   var dy=quoteClientY(e)-quoteStartY;
   if(dy<0) dy=dy*0.18;
   quoteDy=Math.max(0,dy);
@@ -600,6 +677,7 @@ if(window.PointerEvent){
   window.addEventListener("mousemove",onQuoteMove);
   window.addEventListener("mouseup",onQuoteUp);
 }
+if(quoteScroll) quoteScroll.addEventListener("scroll",measureQuoteScroll);
 quoteDismiss.addEventListener("click",function(){ dismissQuote(true); });
 
 /* ===================== generic sheet controller ===================== */
@@ -789,12 +867,13 @@ function render(){
   $("calPrev").setAttribute("aria-label",t("prevMonth"));
   $("calNext").setAttribute("aria-label",t("nextMonth"));
   shareBtn.setAttribute("aria-label",t("share"));
+  if(quoteScroll) quoteScroll.setAttribute("aria-label",t("scrollHint"));
   memoText.placeholder=t("memoPlaceholder");
   qText.placeholder=t("qTextPlaceholder");
   qAuthor.placeholder=t("qAuthorPlaceholder");
   renderCalWeek();
   setHint(hintMode);
-  if(!quoteCard.hidden&&currentQuote.en) updateQuoteCardContent();
+  if(!quoteCard.hidden&&currentQuote.en){ updateQuoteCardContent(); if(quoteScroll) quoteScroll.scrollTop=0; }
 }
 $("language").addEventListener("change",function(e){
   state.lang = e.target.value === "ko" ? "ko" : "en";
@@ -849,23 +928,36 @@ try {
   if(!response.ok) throw new Error("deck");
   const data=await response.json();
   BASE_QUOTES=(Array.isArray(data.quotes)?data.quotes:[]).filter(function(q){
-    return q&&/^q\d\d$/.test(q.id)&&typeof q.text==="string";
+    return q&&/^q\d{2,3}$/.test(q.id)&&typeof q.text==="string";
   }).map(function(q){
     return { id:q.id, t:q.text, ko:typeof q.ko==="string"?q.ko:"", a:typeof q.author==="string"?q.author:"",
+      a_ko:typeof q.author_ko==="string"?q.author_ko:"", work:typeof q.work_or_source==="string"?q.work_or_source:"",
       theme:typeof q.theme==="string"?q.theme:"", image:typeof q.image==="string"?q.image:"",
       imageAvailable:!!q.imageAvailable, source:"default" };
   });
   if(!BASE_QUOTES.length) throw new Error("empty");
 }catch(e){ deckLoadFailed=true; }
-beltImages=BASE_QUOTES.filter(function(q){ return q.imageAvailable&&q.image; }).map(function(q){ return q.image; });
+BASE_QUOTES.forEach(function(q){ if(q.imageAvailable&&q.image&&beltImages.indexOf(q.image)<0) beltImages.push(q.image); });
+buildLegacyIdMap();
 migrateLegacyNotes();
+remapStoredQuoteIds();
 rebuildQuotes(false);
 updateStorageHook();
 measure(); buildDeck();
 window.addEventListener("resize",measure);
+window.addEventListener("resize",measureQuoteScroll);
 render();
 setHint("idle");
-tick(); setInterval(tick,1000/60);
+tick();
+var beltRaf=0;
+if(window.requestAnimationFrame){
+  var frame=function(){ tick(); beltRaf=requestAnimationFrame(frame); };
+  beltRaf=requestAnimationFrame(frame);
+  document.addEventListener("visibilitychange",function(){
+    if(document.hidden){ if(beltRaf){ cancelAnimationFrame(beltRaf); beltRaf=0; } }
+    else if(!beltRaf){ lastT=0; beltRaf=requestAnimationFrame(frame); }
+  });
+}else setInterval(tick,1000/60);
 if(deckLoadFailed){
   drawButton.disabled=true;
   deck.setAttribute("aria-disabled","true");

@@ -1,17 +1,30 @@
 #!/usr/bin/env python3
-"""Real-browser QA for the restored photo-deck Daily Quote Card app.
+"""Real-browser QA for the restored photo-deck Daily Quote Card app running
+the 103 original bilingual quotes deck (EN text + KO original, author and
+work_or_source attribution on every card).
 
 Usage: python3 qa.py --url http://localhost:4187 --out qa-out [--record]
 
 Drives headless Chromium at 390x844 (mobile, touch, DPR 3) and 1280x900 with
 prefers-reduced-motion disabled. Verifies the 7-card photo belt (render, photo
-decode, motion), real pointer drag-to-draw above/below the 120px threshold,
-button (#drawButton) and Enter/Space draws, pointer swipe and #quoteDismiss
-dismissal, memo save + calendar persistence, custom-quote add and survival,
-two full unique 12-card draw cycles, service-worker photo caching, manifest +
-icons, installability errors, offline use, and legacy daily-quote-card:v1 note
-migration when production supports it. Captures clean marketing screenshots at
-both widths in dedicated fresh contexts; --record additionally writes two
+decode, <=9 lazy/async image nodes, motion), real pointer drag-to-draw
+above/below the 120px threshold, button (#drawButton) and Enter/Space draws,
+pointer swipe and #quoteDismiss dismissal, memo save + calendar persistence,
+custom-quote add (104 total) and survival, two full unique 103-id draw cycles
+(206 real animated button draws, asserted by id since originals may share
+text), service-worker caching of the full unique deck image set (up to 60s),
+manifest + icons, installability errors, and offline use at both widths.
+Dedicated prefers-reduced-motion contexts at 390 and 1280 exhaustively verify
+all 103 quotes EN+KO — exact text, author and source via forceQuoteId plus a
+real #drawButton click, language switched on the revealed card without
+redrawing — plus the longest quote: full-text snapshot persistence in
+localStorage and author/source/actions staying visible before and after a
+native wheel (or CDP touch) scroll to the end of the text. Legacy
+daily-quote-card:v1 note import and the v1->v2 id remap migration (q01 -> q001,
+custom ids untouched) are exercised against real storage and the visible
+calendar. Clean screenshots at both widths include the longest quote EN/KO at
+top and scrolled bottom, q001 attribution and the longest-source card;
+--record additionally writes two
 short real flow videos (flow-390.webm, flow-1280.webm).
 
 All readiness waits are DOM predicates (wait_for_function / wait_for_selector);
@@ -36,8 +49,22 @@ MOBILE = dict(viewport={'width': 390, 'height': 844}, device_scale_factor=3,
               is_mobile=True, has_touch=True, reduced_motion='no-preference')
 DESKTOP = dict(viewport={'width': 1280, 'height': 900},
                reduced_motion='no-preference')
+# Reduced-motion contexts used only for the exhaustive per-quote content
+# passes so 103 forced draws stay fast; the core animation checks keep
+# reduced_motion='no-preference'.
+REDUCE_MOBILE = dict(MOBILE, reduced_motion='reduce')
+REDUCE_DESKTOP = dict(DESKTOP, reduced_motion='reduce')
+
+DECK_N = 103                    # original bilingual quotes (exact supplied ids)
+CUSTOM_TOTAL = DECK_N + 1       # deck + one custom quote
+CYCLE_DRAWS = 2 * DECK_N        # two full unique cycles
+CACHE_WAIT_S = 60               # service worker may need a while for ~103 images
 
 LEGACY_KEY = 'daily-quote-card:v1'
+PREF_KEY = 'daily-quote-card.prefs.v2'
+QKEY = 'daily-quote-card.quotes.v2'
+MEMO_KEY = 'daily-quote-card.memos.v2'
+DRAWN_KEY = 'daily-quote-card.drawn.v2'
 THOUGHT = 'A small step is still progress.'
 OFFLINE_THOUGHT = 'An offline note still lands safely.'
 MARKETING_THOUGHT = 'A quiet morning gave this sentence room to land.'
@@ -59,10 +86,14 @@ SETTLED = ("() => { const d = document.getElementById('drawCard');"
            " && !(a && a.classList.contains('is-drawing')); }")
 CARD_HIDDEN = ("() => { const c = document.getElementById('quoteCard');"
                " return !!(c && c.hidden); }")
-NEXT_QUOTE = ("(t) => { const c = document.getElementById('quoteCard');"
-              " const q = document.getElementById('quoteText');"
-              " return !!(c && q && !c.hidden && c.dataset.state === 'revealed'"
-              " && q.textContent.trim().length && q.textContent !== t); }")
+NEXT_DRAW = ("(p) => { const h = " + HOOK + " || {};"
+             " const c = document.getElementById('quoteCard');"
+             " return !!(c && !c.hidden && c.dataset.state === 'revealed'"
+             " && h.lastDrawId && h.lastDrawId !== p); }")
+REVEALED_ID = ("(id) => { const h = " + HOOK + " || {};"
+               " const c = document.getElementById('quoteCard');"
+               " return !!(c && !c.hidden && c.dataset.state === 'revealed'"
+               " && h.lastDrawId === id); }")
 CARD_POINT = """() => {
   const deck = document.getElementById('deck');
   if (!deck) return null;
@@ -126,6 +157,92 @@ DECK_IMAGES = """async () => {
   } catch (e) {}
   return null;
 }"""
+DECK_QUOTES = """async () => {
+  try {
+    const r = await fetch('deck.json');
+    if (r.ok) {
+      const d = await r.json();
+      if (d && Array.isArray(d.quotes)) return d.quotes;
+    }
+  } catch (e) {}
+  try {
+    if (Array.isArray(window.QUOTE_DECK)) return window.QUOTE_DECK;
+  } catch (e) {}
+  return null;
+}"""
+CARD_VIEW = """() => {
+  const h = (window.DAILY_QUOTE_CARD_TEST || window.GOOD_THOUGHT_CARD_TEST) || {};
+  const txt = (s) => { const e = document.querySelector(s); return e ? e.textContent.trim() : ''; };
+  const card = document.getElementById('quoteCard');
+  return {
+    text: txt('#quoteText'),
+    author: txt('#quoteAuthor'),
+    source: txt('#quoteSource') || txt('#quoteCard .quote-source') || txt('#quoteCard .attribution .source'),
+    cardText: card ? card.innerText : '',
+    id: h.lastDrawId || '',
+    draws: h.drawCount || 0,
+    drawn: h.drawnCardCount || 0,
+  };
+}"""
+LONG_BOUND = """() => {
+  const de = document.documentElement;
+  const card = document.getElementById('quoteCard');
+  if (!card || card.hidden) return {err: 'card hidden'};
+  const cr = card.getBoundingClientRect();
+  const overX = Math.max(de.scrollWidth, document.body ? document.body.scrollWidth : 0)
+                - de.clientWidth;
+  const txt = document.getElementById('quoteText');
+  const tr = txt.getBoundingClientRect();
+  const sc = document.getElementById('quoteScroll')
+             || (txt && txt.closest ? txt.closest('.quote-scroll') : null);
+  const inCard = (r) => !!r && r.bottom <= cr.bottom + 1 && r.top >= cr.top - 1
+                 && r.left >= cr.left - 1 && r.right <= cr.right + 1 && r.height > 0;
+  const authorEl = document.getElementById('quoteAuthor');
+  const srcEl = document.getElementById('quoteSource') || card.querySelector('.quote-source');
+  const acts = document.getElementById('memoCta') || card.querySelector('.quote-actions');
+  const hint = document.getElementById('quoteScrollHint');
+  const res = {overX,
+               withinX: tr.left >= cr.left - 1 && tr.right <= cr.right + 1,
+               textIn: inCard(tr), cardH: Math.round(cr.height), txtH: Math.round(tr.height),
+               authorIn: inCard(authorEl && authorEl.getBoundingClientRect()),
+               srcIn: srcEl ? (srcEl.hidden ? 'hidden' : inCard(srcEl.getBoundingClientRect())) : 'absent',
+               actsIn: inCard(acts ? acts.getBoundingClientRect() : null)};
+  if (sc) {
+    res.scrollable = sc.scrollHeight > sc.clientHeight + 1;
+    res.scrollTop = Math.round(sc.scrollTop);
+    res.atEnd = sc.scrollTop + sc.clientHeight >= sc.scrollHeight - 1;
+    res.hasMore = sc.classList.contains('has-more');
+    res.authorOut = !!(authorEl && !sc.contains(authorEl));
+    res.srcOut = srcEl ? !sc.contains(srcEl) : 'absent';
+  } else {
+    res.scrollable = false;
+  }
+  res.hint = hint ? {hidden: hint.hidden, vis: getComputedStyle(hint).visibility}
+                  : {hidden: true, vis: 'absent'};
+  return res;
+}"""
+QUOTE_SCROLLABLE = ("() => { const s = document.getElementById('quoteScroll');"
+                    " return !!(s && s.scrollHeight > s.clientHeight + 1); }")
+QUOTE_AT_END = ("() => { const s = document.getElementById('quoteScroll');"
+                " return !!(s && s.scrollTop + s.clientHeight >= s.scrollHeight - 1); }")
+QUOTE_OVERFLOW_TOP = ("() => { const s = document.getElementById('quoteScroll');"
+                      " const h = document.getElementById('quoteScrollHint');"
+                      " return !!(s && s.scrollHeight > s.clientHeight + 1"
+                      " && s.scrollTop <= 1 && s.classList.contains('has-more')"
+                      " && h && !h.hidden"
+                      " && getComputedStyle(h).visibility === 'visible'); }")
+QUOTE_AT_END_SETTLED = ("() => { const s = document.getElementById('quoteScroll');"
+                        " const h = document.getElementById('quoteScrollHint');"
+                        " return !!(s && s.scrollTop + s.clientHeight >= s.scrollHeight - 1"
+                        " && !s.classList.contains('has-more')"
+                        " && (!h || getComputedStyle(h).visibility === 'hidden')); }")
+STATE_DUMP = """() => ({
+  prefs: JSON.parse(localStorage.getItem('daily-quote-card.prefs.v2') || 'null'),
+  quotes: JSON.parse(localStorage.getItem('daily-quote-card.quotes.v2') || 'null'),
+  memos: JSON.parse(localStorage.getItem('daily-quote-card.memos.v2') || '[]'),
+  drawn: JSON.parse(localStorage.getItem('daily-quote-card.drawn.v2') || '[]'),
+  legacy: localStorage.getItem('daily-quote-card:v1'),
+})"""
 CACHE_DUMP = """async () => {
   if (!('caches' in window)) return [];
   const out = [];
@@ -252,33 +369,31 @@ def last_draw_id(page) -> str | None:
     return (h or {}).get('lastDrawId')
 
 
-def wait_next_quote(page, prev_text, timeout=9000):
-    page.wait_for_function(NEXT_QUOTE, arg=prev_text, timeout=timeout)
+def wait_next_draw(page, prev_id, timeout=9000):
+    page.wait_for_function(NEXT_DRAW, arg=prev_id, timeout=timeout)
     page.wait_for_function(SETTLED, timeout=timeout)
 
 
 def button_draw(page) -> DrawResult:
     """Click #drawButton; waits for a genuinely new reveal + finished clone."""
-    prev = quote_text(page)
-    for _ in range(1):
-        page.wait_for_function(SETTLED)
-        page.click('#drawButton')
-        try:
-            wait_next_quote(page, prev, timeout=6000)
-            return {'id': last_draw_id(page), 'text': quote_text(page)}
-        except PWTimeout:
-            continue
-    raise AssertionError('#drawButton click produced no new draw')
+    prev = last_draw_id(page)
+    page.wait_for_function(SETTLED)
+    page.click('#drawButton')
+    try:
+        wait_next_draw(page, prev, timeout=6000)
+    except PWTimeout:
+        raise AssertionError('#drawButton click produced no new draw')
+    return {'id': last_draw_id(page), 'text': quote_text(page)}
 
 
 def key_draw(page, key) -> DrawResult:
-    prev = quote_text(page)
+    prev = last_draw_id(page)
     page.wait_for_function(SETTLED)
     page.focus('#deck')
     assert page.evaluate("() => document.activeElement && document.activeElement.id") == 'deck', \
         '#deck did not take focus'
     page.keyboard.press(key)
-    wait_next_quote(page, prev)
+    wait_next_draw(page, prev)
     return {'id': last_draw_id(page), 'text': quote_text(page)}
 
 
@@ -296,7 +411,7 @@ def card_point(page):
 
 def drag_draw(page, dy=170) -> DrawResult:
     """Real pointer down/move/up on the card nearest deck centre."""
-    prev = quote_text(page)
+    prev = last_draw_id(page)
     pt = card_point(page)
     page.mouse.move(pt['x'], pt['y'])
     page.mouse.down()
@@ -304,8 +419,32 @@ def drag_draw(page, dy=170) -> DrawResult:
     grabbed = page.eval_on_selector('#drawCard', 'e => e.style.opacity')
     assert grabbed == '1', f'pointer-down did not grab a belt card (opacity={grabbed!r})'
     page.mouse.up()
-    wait_next_quote(page, prev)
+    wait_next_draw(page, prev)
     return {'id': last_draw_id(page), 'text': quote_text(page)}
+
+
+def force_draw(page, qid, timeout=9000):
+    """Set the supported test hook then perform a real #drawButton click."""
+    page.wait_for_function(SETTLED, timeout=timeout)
+    page.evaluate(f"(id) => {{ const h = {HOOK}; if (h) h.forceQuoteId = id; }}", qid)
+    page.click('#drawButton')
+    page.wait_for_function(REVEALED_ID, arg=qid, timeout=timeout)
+    page.wait_for_function(SETTLED, timeout=timeout)
+    return {'id': last_draw_id(page), 'text': quote_text(page)}
+
+
+def set_lang(page, lang):
+    page.select_option('#language', lang)
+
+
+def wait_card_text(page, text, timeout=5000):
+    page.wait_for_function("(t) => { const q = document.getElementById('quoteText');"
+                           " return q && q.textContent === t; }",
+                           arg=text, timeout=timeout)
+
+
+def norm_txt(s):
+    return re.sub(r'\s+', ' ', s or '').strip()
 
 
 def close_any_sheet(page):
@@ -386,8 +525,15 @@ def belt_check(page):
     assert srcs, 'no photo sources on belt cards'
     bad = page.evaluate(DECODE, srcs)
     assert not bad, f'undecodable belt photos: {bad[:4]}'
+    imgs = page.evaluate("() => [...document.querySelectorAll('img')]"
+                         ".map(i => ({l: i.loading, d: i.decoding}))")
+    assert len(imgs) <= 9, f'{len(imgs)} image nodes (>9)'
+    flagged = [i for i in imgs if i['l'] == 'lazy' or i['d'] == 'async']
+    assert len(flagged) == len(imgs), \
+        f'{len(imgs) - len(flagged)} images without lazy/async flags'
     assert page.locator('#drawButton').is_visible(), '#drawButton not visible'
-    return f'7 photo belt cards; {len(srcs)} photo(s) decode; #drawButton visible'
+    return (f'7 photo belt cards; {len(srcs)} photo(s) decode; '
+            f'{len(imgs)} lazy/async image nodes; #drawButton visible')
 
 
 def belt_motion(page):
@@ -399,6 +545,7 @@ def belt_motion(page):
 
 
 def short_drag(page):
+    prev_id = last_draw_id(page)
     prev = quote_text(page)
     pt = card_point(page)
     page.mouse.move(pt['x'], pt['y'])
@@ -408,7 +555,8 @@ def short_drag(page):
     page.mouse.up()
     assert grabbed == '1', f'pointer-down did not grab a belt card (opacity={grabbed!r})'
     page.wait_for_function(SETTLED)
-    assert quote_text(page) == prev, '60px drag unexpectedly drew a card'
+    assert last_draw_id(page) == prev_id and quote_text(page) == prev, \
+        '60px drag unexpectedly drew a card'
     if not prev.strip():
         st = page.evaluate("() => { const c = document.getElementById('quoteCard');"
                            " return {h: c.hidden, s: c.dataset.state}; }")
@@ -436,9 +584,9 @@ def drag_draw_check(page):
 
 def swipe_dismiss(page):
     ensure_revealed(page)
-    box = page.locator('#quoteText').bounding_box() or page.locator('#quoteCard').bounding_box()
+    box = page.locator('#quoteCard').bounding_box()
     assert box, 'no quote card geometry'
-    x, y = box['x'] + box['width'] / 2, box['y'] + box['height'] / 2
+    x, y = box['x'] + box['width'] / 2, box['y'] + 60
     page.mouse.move(x, y)
     page.mouse.down()
     page.mouse.move(x, y + 110, steps=8)
@@ -550,36 +698,46 @@ def add_quote(page, st):
     h1 = hook(page) or {}
     assert h1.get('customQuoteCount', 0) == h0.get('customQuoteCount', 0) + 1, \
         f"customQuoteCount {h0.get('customQuoteCount')} -> {h1.get('customQuoteCount')}"
-    assert h1.get('totalQuoteCount') == 13, f"totalQuoteCount={h1.get('totalQuoteCount')}"
-    return f"saved; counts {h1.get('customQuoteCount')}/{h1.get('totalQuoteCount')} (was 12)"
+    assert h1.get('totalQuoteCount') == CUSTOM_TOTAL, \
+        f"totalQuoteCount={h1.get('totalQuoteCount')}"
+    return (f"saved; counts {h1.get('customQuoteCount')}/{h1.get('totalQuoteCount')} "
+            f"(was {DECK_N})")
 
 
 def add_quote_persist(page, st):
     page.reload(wait_until='domcontentloaded')
     page.wait_for_function(BELT_READY)
     h = hook(page) or {}
-    assert h.get('totalQuoteCount') == 13 and h.get('customQuoteCount', 0) >= 1, f'hook={h}'
-    return 'custom quote survives reload (totalQuoteCount=13)'
+    assert h.get('totalQuoteCount') == CUSTOM_TOTAL and h.get('customQuoteCount', 0) >= 1, \
+        f'hook={h}'
+    return f'custom quote survives reload (totalQuoteCount={CUSTOM_TOTAL})'
 
 
 def find_custom(page, st):
     text = st.get('custom_text')
     assert text, 'no custom text recorded'
-    for i in range(13):
+    for i in range(CUSTOM_TOTAL):
         d = button_draw(page)
-        if d['text'] == text:
-            return f'custom quote reached in {i + 1} real #drawButton draws (<=13)'
-    raise AssertionError('custom quote not drawn within 13 real draws')
+        if d['text'] == text or (d['id'] or '').startswith('custom-'):
+            return (f'custom quote reached in {i + 1} real #drawButton draws '
+                    f'(<= {CUSTOM_TOTAL})')
+    raise AssertionError(f'custom quote not drawn within {CUSTOM_TOTAL} real draws')
 
 
 def quote_cycles(page):
-    got = [button_draw(page)['text'] for _ in range(24)]
-    adj = [f'{a}' for a, b in zip(got, got[1:]) if a == b]
-    assert not adj, f'adjacent repeats: {adj}'
-    b1, b2 = set(got[:12]), set(got[12:])
-    assert len(set(got)) == 12 and len(b1) == 12 and len(b2) == 12 and b1 == b2, \
-        f'blocks not unique full cycles: {len(b1)}+{len(b2)} unique'
-    return '24 real draws = 2 unique 12-card cycles, no adjacent repeats'
+    got = []
+    for _ in range(CYCLE_DRAWS):
+        d = button_draw(page)
+        assert d['id'], 'draw produced no lastDrawId'
+        got.append(d['id'])
+    adj = [a for a, b in zip(got, got[1:]) if a == b]
+    assert not adj, f'adjacent repeat ids: {sorted(set(adj))[:4]}'
+    b1, b2 = set(got[:DECK_N]), set(got[DECK_N:])
+    assert len(set(got)) == DECK_N and len(b1) == DECK_N and len(b2) == DECK_N \
+        and b1 == b2, \
+        f'blocks not unique full cycles: {len(b1)}+{len(b2)} unique ids'
+    return (f'{CYCLE_DRAWS} real draws = 2 unique {DECK_N}-card cycles '
+            '(asserted by id), no adjacent repeats')
 
 
 def sw_control(page):
@@ -594,26 +752,31 @@ def sw_control(page):
 
 def cache_photos(page):
     expected = page.evaluate(DECK_IMAGES)
-    caches = page.evaluate(CACHE_DUMP)
-    flat = sorted({u for c in caches for u in c['urls']})
-    assert flat, 'no CacheStorage entries found'
+    assert expected, 'deck image list unavailable'
+    assert len(expected) == DECK_N, \
+        f'deck lists {len(expected)} image references, expected {DECK_N}'
     base = page.evaluate("() => new URL('./', location.href).pathname")
-    if expected:
-        assert len(expected) == 12, f'deck lists {len(expected)} images, expected 12'
-        need = [s if s.startswith('/') else base + ('images/' if '/' not in s else '') + s
-                for s in expected]
+    uniq = sorted(set(expected))
+    need = [s if s.startswith('/') else base + ('images/' if '/' not in s else '') + s
+            for s in uniq]
+    deadline = time.time() + CACHE_WAIT_S
+    caches, flat, missing = [], [], need
+    while missing:
+        caches = page.evaluate(CACHE_DUMP)
+        flat = sorted({u for c in caches for u in c['urls']})
         missing = [u for u in need if u not in flat]
-        assert not missing, f'not cached: {missing}'
-        srcs = [('images/' + s) if '/' not in s else s for s in expected]
-        label = f'12 deck photos present in {caches[0]["key"] if caches else "?"}'
-    else:
-        srcs = [u for u in flat
-                if re.search(r'\.(webp|png|jpe?g|avif)$', u, re.I) and 'icon' not in u.lower()]
-        assert len(srcs) >= 12, f'only {len(srcs)} photo-like cache entries (deck.json unavailable)'
-        label = f'{len(srcs)} photo cache entries (deck.json unavailable)'
+        if not missing:
+            break
+        assert time.time() < deadline, \
+            f'{len(missing)} deck images not cached after {CACHE_WAIT_S}s: {missing[:5]}'
+        page.wait_for_timeout(500)
+    assert flat, 'no CacheStorage entries found'
+    srcs = [('images/' + s) if '/' not in s else s for s in uniq]
     bad = page.evaluate(DECODE, srcs)
     assert not bad, f'undecodable cached photos: {bad[:4]}'
-    return f'{label}; all {len(srcs)} decode'
+    label = caches[0]['key'] if caches else '?'
+    return (f'{DECK_N} deck image references, {len(uniq)} unique urls complete '
+            f'in {label}; all decode')
 
 
 def manifest_icons(page):
@@ -701,12 +864,263 @@ def legacy_migration(r, browser, url):
         ctx.close()
 
 
+def deck_quotes(page, n=DECK_N):
+    quotes = page.evaluate(DECK_QUOTES)
+    assert isinstance(quotes, list), 'deck quotes unavailable'
+    assert len(quotes) == n, f'deck has {len(quotes)} quotes, expected {n}'
+    ids = [q.get('id') for q in quotes]
+    assert len(set(ids)) == n and all(ids), 'deck ids not unique/present'
+    for q in quotes:
+        assert isinstance(q.get('text'), str) and q['text'].strip(), f"{q.get('id')} empty text"
+        assert isinstance(q.get('ko'), str) and q['ko'].strip(), f"{q.get('id')} empty ko"
+        assert isinstance(q.get('author'), str), f"{q.get('id')} author not a string"
+        assert isinstance(q.get('author_ko'), str), f"{q.get('id')} author_ko not a string"
+        assert q.get('image') and q.get('imageAvailable') is True, \
+            f"{q.get('id')} missing image/imageAvailable"
+    return quotes
+
+
+def quotes_bilingual(page, n=DECK_N):
+    """All 103 quotes: force id + real #drawButton click; exact EN text, author
+    and rendered source, then switch language on the revealed card (no redraw)
+    and require exact KO original_text / original_author."""
+    quotes = deck_quotes(page, n)
+    for q in quotes:
+        qid = q['id']
+        force_draw(page, qid)
+        v = page.evaluate(CARD_VIEW)
+        assert v['id'] == qid, f"drawn id {v['id']!r} != forced {qid!r}"
+        assert v['text'] == q['text'], f"{qid} EN text mismatch: {v['text'][:60]!r}"
+        assert v['author'] == q['author'], \
+            f"{qid} EN author {v['author']!r} != {q['author']!r}"
+        src = (q.get('work_or_source') or '').strip()
+        if src:
+            assert norm_txt(src) in norm_txt(v['cardText']), \
+                f'{qid} source not rendered on card'
+        else:
+            assert not v['source'], f"{qid} unexpected source {v['source']!r}"
+        set_lang(page, 'ko')
+        wait_card_text(page, q['ko'])
+        vk = page.evaluate(CARD_VIEW)
+        assert vk['id'] == qid and vk['drawn'] == v['drawn'], \
+            f'{qid} language switch triggered a redraw'
+        assert vk['text'] == q['ko'], f"{qid} KO text mismatch: {vk['text'][:60]!r}"
+        assert vk['author'] == q['author_ko'], \
+            f"{qid} KO author {vk['author']!r} != {q['author_ko']!r}"
+        set_lang(page, 'en')
+        wait_card_text(page, q['text'])
+    return (f'{n} quotes verified EN (text/author/source) + KO '
+            '(original_text/original_author) via forced real draws')
+
+
+def scroll_quote_end(page):
+    """Native-scroll the quote text to its end: real mouse wheel first, then
+    CDP touch drags for contexts that ignore wheel input. Waits for the app's
+    at-end state (fade cleared, hint kept but invisible). Returns False when
+    the quote does not overflow its scroll region."""
+    if not page.evaluate(QUOTE_SCROLLABLE):
+        return False
+    box = page.locator('#quoteScroll').bounding_box()
+    assert box, 'no #quoteScroll geometry'
+    x, y = box['x'] + box['width'] / 2, box['y'] + box['height'] / 2
+    page.mouse.move(x, y)
+    for _ in range(10):
+        if page.evaluate(QUOTE_AT_END):
+            break
+        page.mouse.wheel(0, 480)
+    if not page.evaluate(QUOTE_AT_END):
+        cdp = page.context.new_cdp_session(page)
+        for _ in range(14):
+            cdp.send('Input.dispatchTouchEvent',
+                     {'type': 'touchStart', 'touchPoints': [{'x': x, 'y': y}]})
+            for i in range(1, 8):
+                cdp.send('Input.dispatchTouchEvent',
+                         {'type': 'touchMove',
+                          'touchPoints': [{'x': x, 'y': y - i * 48}]})
+            cdp.send('Input.dispatchTouchEvent',
+                     {'type': 'touchEnd', 'touchPoints': []})
+            if page.evaluate(QUOTE_AT_END):
+                break
+    page.wait_for_function(QUOTE_AT_END_SETTLED)
+    return True
+
+
+def longest_bounded(page):
+    """The longest EN quote keeps author/source/actions always visible (they
+    sit outside .quote-scroll), its full text persists to localStorage, and a
+    native wheel/touch scroll reaches the end without dismissing the card."""
+    quotes = deck_quotes(page)
+    q = max(quotes, key=lambda x: len(x.get('text') or ''))
+    force_draw(page, q['id'])
+
+    st = page.evaluate(STATE_DUMP)
+    recs = [d for d in st['drawn'] if d.get('quoteId') == q['id']]
+    assert recs, f'no drawn snapshot persisted for {q["id"]}'
+    assert recs[-1].get('quote') == q['text'], \
+        (f"persisted quote snapshot is {len(recs[-1].get('quote') or '')} chars, "
+         f'expected the full {len(q["text"])}')
+
+    page.wait_for_function(QUOTE_OVERFLOW_TOP)
+    m = page.evaluate(LONG_BOUND)
+    assert not m.get('err'), m['err']
+    assert m['overX'] <= 1, f"horizontal overflow: {m['overX']}px"
+    assert m['withinX'], 'quote text escapes the card horizontally'
+    assert m['scrollable'] is True, 'longest quote did not overflow its scroll region'
+    assert m['authorOut'] is True, 'author still inside the scroll region'
+    assert m['authorIn'], 'author not visible before scrolling'
+    assert m['actsIn'], 'actions not visible before scrolling'
+    src = (q.get('work_or_source') or '').strip()
+    if src:
+        assert m['srcOut'] is True, 'source still inside the scroll region'
+        assert m['srcIn'] is True, 'source not visible before scrolling'
+    assert m['hint']['hidden'] is False and m['hint']['vis'] == 'visible', \
+        f"scroll hint not shown on overflow: {m['hint']}"
+    assert m['hasMore'] is True, 'bottom fade missing while more text below'
+
+    assert scroll_quote_end(page), 'native scroll could not reach the quote end'
+    m2 = page.evaluate(LONG_BOUND)
+    assert m2['authorIn'], 'author not visible after scrolling to the end'
+    assert m2['actsIn'], 'actions not visible after scrolling to the end'
+    if src:
+        assert m2['srcIn'] is True, 'source not visible after scrolling'
+    assert m2['hint']['vis'] == 'hidden', 'scroll hint still visible at scroll end'
+    assert m2['hasMore'] is False, 'bottom fade still applied at scroll end'
+    assert page.evaluate("() => { const c = document.getElementById('quoteCard');"
+                         " return !!(c && !c.hidden && c.dataset.state === 'revealed'); }"), \
+        'card dismissed or hidden during quote scrolling'
+    force_draw(page, 'q014')
+    page.wait_for_function("() => document.getElementById('quoteScrollHint').hidden")
+    return (f"{q['id']} ({len(q['text'])} chars) full snapshot persisted; "
+            'author/source/actions visible before+after native scroll to end; '
+            'hint/fade clear at end')
+
+
+def goto_marked_cell(page, key, max_prev=30):
+    sel = f"#calGrid .cal-cell.has[data-k='{key}']"
+    for _ in range(max_prev):
+        if page.locator(sel).count():
+            return
+        page.click('#calPrev')
+    raise AssertionError(f'no marked calendar cell for {key} within {max_prev} months')
+
+
+def v2_migration(r, browser, url):
+    """v1->v2 id remap: seeded prefs (saved q01 + stable q104 + custom id),
+    dated q01 draw+memo holding historical text/author, a custom quote and a
+    custom draw record, plus a v1 note under q01. After real boot the storage
+    must read q001 (custom untouched, same text/time/thought/drawId), the
+    import must carry id q001, the v1 blob must stay unchanged, the marked
+    calendar days must show the records, and a reload must be idempotent."""
+    ctx = browser.new_context(**MOBILE)
+    page = ctx.new_page()
+    page.set_default_timeout(15000)
+    r.watch(page, 'v2-migration')
+    old_text = 'Begin with one small, honest step.'
+    old_author = 'Original reflection'
+    thought = 'A note saved on the old first card.'
+    legacy_note = 'A v1 note written on the old first card.'
+    custom_text = 'A seeded custom thought.'
+    seed = {
+        'prefs': {'lang': 'en', 'saved': ['q01', 'q104', 'custom-v2-seed']},
+        'quotes': [{'id': 'custom-v2-seed', 't': custom_text, 'a': 'QA Seed'}],
+        'drawn': [{'id': 'draw-old-1', 'ts': 0, 'dateKey': '', 'time': '9:41 AM',
+                   'quoteId': 'q01', 'quoteSource': 'default',
+                   'quote': old_text, 'author': old_author, 'custom': False},
+                  {'id': 'draw-old-2', 'ts': 0, 'dateKey': '', 'time': '9:42 AM',
+                   'quoteId': 'custom-v2-seed', 'quoteSource': 'local',
+                   'quote': custom_text, 'author': 'QA Seed', 'custom': True}],
+        'memos': [{'id': 'memo-old-1', 'ts': 0, 'dateKey': '', 'time': '9:43 AM',
+                   'quoteId': 'q01', 'quoteSource': 'default',
+                   'quote': old_text, 'author': old_author,
+                   'thought': thought, 'drawId': 'draw-old-1', 'imported': False}],
+        'legacy': {'lang': 'en', 'current': 'q01', 'seen': ['q01'],
+                   'notes': {'q01': legacy_note}, 'saved': []},
+    }
+    ctx.add_init_script(
+        f"const S={json.dumps(seed)};"
+        f"const d=new Date(); d.setMonth(d.getMonth()-2); d.setDate(15);"
+        f"const p=n=>String(n).padStart(2,'0');"
+        f"const DK=`${{d.getFullYear()}}-${{p(d.getMonth()+1)}}-${{p(d.getDate())}}`;"
+        f"const T=d.getTime();"
+        f"S.drawn[0].ts=T; S.drawn[0].dateKey=DK; S.drawn[1].ts=T+1000; S.drawn[1].dateKey=DK;"
+        f"S.memos[0].ts=T+2000; S.memos[0].dateKey=DK;"
+        f"if (!localStorage.getItem('{PREF_KEY}')) localStorage.setItem('{PREF_KEY}', JSON.stringify(S.prefs));"
+        f"if (!localStorage.getItem('{QKEY}')) localStorage.setItem('{QKEY}', JSON.stringify(S.quotes));"
+        f"if (!localStorage.getItem('{DRAWN_KEY}')) localStorage.setItem('{DRAWN_KEY}', JSON.stringify(S.drawn));"
+        f"if (!localStorage.getItem('{MEMO_KEY}')) localStorage.setItem('{MEMO_KEY}', JSON.stringify(S.memos));"
+        f"if (!localStorage.getItem('{LEGACY_KEY}')) localStorage.setItem('{LEGACY_KEY}', JSON.stringify(S.legacy));")
+    try:
+        boot(page, url)
+        st = page.evaluate(STATE_DUMP)
+        drawn = {d['id']: d for d in st['drawn']}
+        memos = {m['id']: m for m in st['memos']}
+        assert 'draw-old-1' in drawn and 'memo-old-1' in memos, 'seeded v2 records missing'
+        d1, d2, m1 = drawn['draw-old-1'], drawn['draw-old-2'], memos['memo-old-1']
+        assert d1['quoteId'] == 'q001', f"draw quoteId {d1['quoteId']!r} not remapped to q001"
+        assert d1['quote'] == old_text and d1['author'] == old_author, \
+            'historical draw text/author rewritten'
+        assert d1['time'] == '9:41 AM', f"draw time {d1['time']!r} changed"
+        assert d2['quoteId'] == 'custom-v2-seed', 'custom draw id not preserved'
+        assert m1['quoteId'] == 'q001', f"memo quoteId {m1['quoteId']!r} not remapped"
+        assert m1['thought'] == thought and m1['drawId'] == 'draw-old-1' \
+            and m1['time'] == '9:43 AM', 'memo thought/drawId/time changed'
+        dk = d1['dateKey']
+        imported = [m for m in st['memos'] if m.get('imported')]
+        assert len(imported) == 1 and imported[0]['quoteId'] == 'q001' \
+            and imported[0]['thought'] == legacy_note, \
+            f'v1 note import wrong: {imported[:1]}'
+        saved = (st['prefs'] or {}).get('saved') or []
+        assert 'q001' in saved and 'q104' in saved and 'custom-v2-seed' in saved \
+            and 'q01' not in saved, f'saved remap wrong: {saved}'
+        assert json.loads(st['legacy']).get('notes', {}).get('q01') == legacy_note, \
+            'v1 blob mutated'
+
+        open_cal(page)
+        open_day(page, today_key(page))
+        assert legacy_note in day_text(page), 'imported note not in today day view'
+        page.click('#calBack')
+        wait_month_view(page)
+        goto_marked_cell(page, dk)
+        open_day(page, dk)
+        txt = day_text(page)
+        assert old_text in txt and thought in txt and custom_text in txt, \
+            'historical day view missing draw/memo/custom entries'
+        page.click('#calBack')
+        wait_month_view(page)
+        close_sheet(page)
+
+        force_draw(page, 'q001')
+        pressed = page.eval_on_selector('#bookmark', "e => e.getAttribute('aria-pressed')")
+        assert pressed == 'true', f'remapped q001 not bookmarked (aria-pressed={pressed})'
+
+        memo_len = len(st['memos'])
+        page.reload(wait_until='domcontentloaded')
+        page.wait_for_function(BELT_READY)
+        st2 = page.evaluate(STATE_DUMP)
+        d2b = {d['id']: d for d in st2['drawn']}
+        assert d2b.get('draw-old-1', {}).get('quoteId') == 'q001', \
+            'remap not stable across reload'
+        imp2 = [m for m in st2['memos'] if m.get('imported')]
+        assert len(st2['memos']) == memo_len and len(imp2) == 1, \
+            f'reload duplicated records: memos {memo_len} -> {len(st2["memos"])}'
+        saved2 = (st2['prefs'] or {}).get('saved') or []
+        assert 'q001' in saved2 and 'q01' not in saved2, 'saved remap lost on reload'
+        return ('q01 records remapped to q001 (same text/time/thought/drawId), '
+                'custom ids unchanged, v1 note imported as q001, v1 untouched, '
+                'calendar shows both days, reload idempotent')
+    finally:
+        ctx.close()
+
+
 def shoot_set(r, browser, url, cfg, tag):
-    """Clean marketing captures in a dedicated fresh context."""
+    """Clean captures in a dedicated fresh context, including the longest
+    quote in EN+KO at top and scrolled bottom, q001 attribution and the
+    longest-source card."""
     ctx = browser.new_context(**cfg)
     page = ctx.new_page()
     page.set_default_timeout(15000)
     r.watch(page, f'shot-{tag}')
+    n0 = len(r.screenshots)
     try:
         boot(page, url)
         unskip(page)
@@ -737,9 +1151,34 @@ def shoot_set(r, browser, url, cfg, tag):
         unskip(page)
         r.shot(page, f'{tag}-add-sheet.png')
         close_sheet(page, 'addRoot')
+        quotes = deck_quotes(page)
+        long_q = max(quotes, key=lambda q: len(q.get('text') or ''))
+        src_q = max(quotes, key=lambda q: len(q.get('work_or_source') or ''))
+        force_draw(page, long_q['id'])
+        unskip(page)
+        r.shot(page, f"{tag}-quote-{long_q['id']}-en.png", '#quoteCard')
+        scroll_quote_end(page)
+        unskip(page)
+        r.shot(page, f"{tag}-quote-{long_q['id']}-en-bottom.png", '#quoteCard')
+        set_lang(page, 'ko')
+        wait_card_text(page, long_q.get('ko') or long_q['text'])
+        unskip(page)
+        r.shot(page, f"{tag}-quote-{long_q['id']}-ko.png", '#quoteCard')
+        scroll_quote_end(page)
+        unskip(page)
+        r.shot(page, f"{tag}-quote-{long_q['id']}-ko-bottom.png", '#quoteCard')
+        set_lang(page, 'en')
+        wait_card_text(page, long_q['text'])
+        force_draw(page, 'q001')
+        unskip(page)
+        r.shot(page, f'{tag}-quote-q001-attribution.png', '#quoteCard')
+        if src_q['id'] != 'q001':
+            force_draw(page, src_q['id'])
+            unskip(page)
+            r.shot(page, f"{tag}-quote-{src_q['id']}-source.png", '#quoteCard')
     finally:
         ctx.close()
-    return '8 shots'
+    return f'{len(r.screenshots) - n0} shots (long quote EN/KO top+bottom)'
 
 
 def record_flow(r, browser, url, cfg, name, tmp):
@@ -860,7 +1299,23 @@ def run(url, out, record=False):
                 r.check('quote_cycles', lambda: quote_cycles(cpage))
             cctx.close()
 
-            print('== pwa / offline (fresh context)')
+            print('== exhaustive deck content 390 (reduced motion)')
+            ectx, epage = new_page(r, browser, REDUCE_MOBILE, 'deck-390')
+            r.check('mobile_deck_boot', lambda: boot(epage, url))
+            if r.ok():
+                r.check('mobile_quotes_bilingual', lambda: quotes_bilingual(epage))
+                r.check('mobile_longest_bounded', lambda: longest_bounded(epage))
+            ectx.close()
+
+            print('== exhaustive deck content 1280 (reduced motion)')
+            ectx2, epage2 = new_page(r, browser, REDUCE_DESKTOP, 'deck-1280')
+            r.check('desktop_deck_boot', lambda: boot(epage2, url))
+            if r.ok():
+                r.check('desktop_quotes_bilingual', lambda: quotes_bilingual(epage2))
+                r.check('desktop_longest_bounded', lambda: longest_bounded(epage2))
+            ectx2.close()
+
+            print('== pwa / offline 390 (fresh context)')
             pctx, ppage = new_page(r, browser, MOBILE, 'pwa')
             r.check('pwa_boot', lambda: boot(ppage, url))
             if r.ok():
@@ -871,10 +1326,24 @@ def run(url, out, record=False):
                 r.check('offline_flow', lambda: offline_flow(ppage, pctx))
             pctx.close()
 
+            print('== pwa / offline 1280 (fresh context)')
+            dpc, dpp = new_page(r, browser, DESKTOP, 'pwa-1280')
+            r.check('desktop_pwa_boot', lambda: boot(dpp, url))
+            if r.ok():
+                r.check('desktop_sw_control', lambda: sw_control(dpp))
+                r.check('desktop_cache_photos', lambda: cache_photos(dpp))
+                r.check('desktop_manifest_icons', lambda: manifest_icons(dpp))
+                r.check('desktop_installability', lambda: installability(dpc, dpp))
+                r.check('desktop_offline_flow', lambda: offline_flow(dpp, dpc))
+            dpc.close()
+
             print('== legacy migration (fresh context)')
             r.check('legacy_migration', lambda: legacy_migration(r, browser, url))
 
-            print('== marketing screenshots (fresh contexts)')
+            print('== v1->v2 id migration (fresh context)')
+            r.check('v2_migration', lambda: v2_migration(r, browser, url))
+
+            print('== screenshots (fresh contexts)')
             r.check('screenshots_mobile',
                     lambda: shoot_set(r, browser, url, MOBILE, 'mobile'))
             r.check('screenshots_desktop',
