@@ -9,10 +9,10 @@
       "author": "Confucius",
       "author_ko": "논어",
       "work_or_source": "The Analects 4.25, trans. James Legge (1861)",
-      "image": "v05.webp",
+      "image": "q001.webp",
       "imageAvailable": true,
       "style": "v05",
-      "imageStatus": "fallback"
+      "imageStatus": "original"
     },
     {
       "id": "q002",
@@ -21,10 +21,10 @@
       "author": "Aristotle",
       "author_ko": "Aristotle",
       "work_or_source": "Rhetoric 1.2, 1356a",
-      "image": "v06.webp",
+      "image": "q002.webp",
       "imageAvailable": true,
       "style": "v06",
-      "imageStatus": "fallback"
+      "imageStatus": "original"
     },
     {
       "id": "q003",
@@ -45,10 +45,10 @@
       "author": "English proverb",
       "author_ko": "Proverb",
       "work_or_source": "Traditional proverb",
-      "image": "v03.webp",
+      "image": "q004.webp",
       "imageAvailable": true,
       "style": "v03",
-      "imageStatus": "fallback"
+      "imageStatus": "original"
     },
     {
       "id": "q005",
@@ -57,10 +57,10 @@
       "author": "Bruce Lee",
       "author_ko": "이소룡",
       "work_or_source": "Bruce Lee official website, “To Hell with Circumstances”",
-      "image": "v09.webp",
+      "image": "q005.webp",
       "imageAvailable": true,
       "style": "v09",
-      "imageStatus": "fallback"
+      "imageStatus": "original"
     },
     {
       "id": "q006",
@@ -93,10 +93,10 @@
       "author": "Yoda",
       "author_ko": "Yoda",
       "work_or_source": "The Empire Strikes Back (1980)",
-      "image": "v03.webp",
+      "image": "q008.webp",
       "imageAvailable": true,
       "style": "v03",
-      "imageStatus": "fallback"
+      "imageStatus": "original"
     },
     {
       "id": "q009",
@@ -129,10 +129,10 @@
       "author": "William Ernest Henley",
       "author_ko": "William Ernest Henley",
       "work_or_source": "“Invictus”",
-      "image": "v09.webp",
+      "image": "q011.webp",
       "imageAvailable": true,
       "style": "v09",
-      "imageStatus": "fallback"
+      "imageStatus": "original"
     },
     {
       "id": "q012",
@@ -153,10 +153,10 @@
       "author": "Unattributed",
       "author_ko": "Unknown",
       "work_or_source": "Unverified modern saying",
-      "image": "v08.webp",
+      "image": "q013.webp",
       "imageAvailable": true,
       "style": "v08",
-      "imageStatus": "fallback"
+      "imageStatus": "original"
     },
     {
       "id": "q014",
@@ -177,10 +177,10 @@
       "author": "Unattributed",
       "author_ko": "Unknown",
       "work_or_source": "Unverified saying",
-      "image": "v06.webp",
+      "image": "q015.webp",
       "imageAvailable": true,
       "style": "v06",
-      "imageStatus": "fallback"
+      "imageStatus": "original"
     },
     {
       "id": "q016",
@@ -201,10 +201,10 @@
       "author": "Herbert Kretzmer (English lyricist; commonly misattributed to Victor Hugo)",
       "author_ko": "할리핀 페이버",
       "work_or_source": "Les Misérables: the musical (English lyrics)",
-      "image": "v08.webp",
+      "image": "q017.webp",
       "imageAvailable": true,
       "style": "v08",
-      "imageStatus": "fallback"
+      "imageStatus": "original"
     },
     {
       "id": "q018",
@@ -225,10 +225,10 @@
       "author": "Attributed to Vivian Greene",
       "author_ko": "비비언 그린",
       "work_or_source": "Attribution unverified",
-      "image": "v10.webp",
+      "image": "q019.webp",
       "imageAvailable": true,
       "style": "v10",
-      "imageStatus": "fallback"
+      "imageStatus": "original"
     },
     {
       "id": "q020",
@@ -285,10 +285,10 @@
       "author": "Paul Atreides / Bene Gesserit litany",
       "author_ko": "Frank Herbert, Dune",
       "work_or_source": "Frank Herbert, Dune (1965), “Litany Against Fear”",
-      "image": "v10.webp",
+      "image": "q025.webp",
       "imageAvailable": true,
       "style": "v10",
-      "imageStatus": "fallback"
+      "imageStatus": "original"
     },
     {
       "id": "q026",
@@ -297,10 +297,10 @@
       "author": "Frank Underwood",
       "author_ko": "Frank Underwood",
       "work_or_source": "House of Cards, Season 1, Episode 1",
-      "image": "v07.webp",
+      "image": "q026.webp",
       "imageAvailable": true,
       "style": "v07",
-      "imageStatus": "fallback"
+      "imageStatus": "original"
     },
     {
       "id": "q027",
@@ -309,10 +309,10 @@
       "author": "Frank Underwood",
       "author_ko": "Frank Underwood",
       "work_or_source": "House of Cards, Season 1, Episode 1",
-      "image": "v03.webp",
+      "image": "q027.webp",
       "imageAvailable": true,
       "style": "v03",
-      "imageStatus": "fallback"
+      "imageStatus": "original"
     },
     {
       "id": "q028",
@@ -357,10 +357,10 @@
       "author": "Frank Underwood",
       "author_ko": "Frank Underwood",
       "work_or_source": "House of Cards, Season 1",
-      "image": "v02.webp",
+      "image": "q031.webp",
       "imageAvailable": true,
       "style": "v02",
-      "imageStatus": "fallback"
+      "imageStatus": "original"
     },
     {
       "id": "q032",
@@ -369,10 +369,10 @@
       "author": "Frank Underwood",
       "author_ko": "Frank Underwood",
       "work_or_source": "House of Cards, Season 1",
-      "image": "v06.webp",
+      "image": "q032.webp",
       "imageAvailable": true,
       "style": "v06",
-      "imageStatus": "fallback"
+      "imageStatus": "original"
     },
     {
       "id": "q033",
@@ -381,10 +381,10 @@
       "author": "Frank Underwood",
       "author_ko": "Frank Underwood",
       "work_or_source": "House of Cards, Season 1",
-      "image": "v03.webp",
+      "image": "q033.webp",
       "imageAvailable": true,
       "style": "v03",
-      "imageStatus": "fallback"
+      "imageStatus": "original"
     },
     {
       "id": "q034",
@@ -393,10 +393,10 @@
       "author": "Frank Underwood",
       "author_ko": "Frank Underwood",
       "work_or_source": "House of Cards, Season 1",
-      "image": "v09.webp",
+      "image": "q034.webp",
       "imageAvailable": true,
       "style": "v09",
-      "imageStatus": "fallback"
+      "imageStatus": "original"
     },
     {
       "id": "q035",
@@ -429,10 +429,10 @@
       "author": "Frank Underwood",
       "author_ko": "Frank Underwood",
       "work_or_source": "House of Cards, Season 1, Episode 1",
-      "image": "v05.webp",
+      "image": "q037.webp",
       "imageAvailable": true,
       "style": "v05",
-      "imageStatus": "fallback"
+      "imageStatus": "original"
     },
     {
       "id": "q038",
@@ -441,10 +441,10 @@
       "author": "Frank Underwood",
       "author_ko": "Frank Underwood",
       "work_or_source": "House of Cards, Season 1",
-      "image": "v07.webp",
+      "image": "q038.webp",
       "imageAvailable": true,
       "style": "v07",
-      "imageStatus": "fallback"
+      "imageStatus": "original"
     },
     {
       "id": "q039",
@@ -453,10 +453,10 @@
       "author": "Frank Underwood",
       "author_ko": "Frank Underwood",
       "work_or_source": "House of Cards, Season 1",
-      "image": "v02.webp",
+      "image": "q039.webp",
       "imageAvailable": true,
       "style": "v02",
-      "imageStatus": "fallback"
+      "imageStatus": "original"
     },
     {
       "id": "q040",
@@ -489,10 +489,10 @@
       "author": "Unattributed",
       "author_ko": "Unknown",
       "work_or_source": "Unverified Korean saying",
-      "image": "v08.webp",
+      "image": "q042.webp",
       "imageAvailable": true,
       "style": "v08",
-      "imageStatus": "fallback"
+      "imageStatus": "original"
     },
     {
       "id": "q043",
@@ -501,10 +501,10 @@
       "author": "Unattributed",
       "author_ko": "Unknown",
       "work_or_source": "Unverified saying; wording circulates in several forms",
-      "image": "v02.webp",
+      "image": "q043.webp",
       "imageAvailable": true,
       "style": "v02",
-      "imageStatus": "fallback"
+      "imageStatus": "original"
     },
     {
       "id": "q044",
@@ -513,10 +513,10 @@
       "author": "Unattributed",
       "author_ko": "Unknown",
       "work_or_source": "Unverified saying",
-      "image": "v04.webp",
+      "image": "q044.webp",
       "imageAvailable": true,
       "style": "v04",
-      "imageStatus": "fallback"
+      "imageStatus": "original"
     },
     {
       "id": "q045",
@@ -525,10 +525,10 @@
       "author": "Unattributed",
       "author_ko": "Unknown",
       "work_or_source": "Unverified saying",
-      "image": "v08.webp",
+      "image": "q045.webp",
       "imageAvailable": true,
       "style": "v08",
-      "imageStatus": "fallback"
+      "imageStatus": "original"
     },
     {
       "id": "q046",
@@ -561,10 +561,10 @@
       "author": "David Goggins",
       "author_ko": "David Goggins",
       "work_or_source": "Can’t Hurt Me (2018), commonly quoted line",
-      "image": "v04.webp",
+      "image": "q048.webp",
       "imageAvailable": true,
       "style": "v04",
-      "imageStatus": "fallback"
+      "imageStatus": "original"
     },
     {
       "id": "q049",
@@ -609,10 +609,10 @@
       "author": "Attributed to Peter Drucker",
       "author_ko": "Peter Drucker",
       "work_or_source": "Attribution disputed; wording has multiple earlier variants",
-      "image": "v02.webp",
+      "image": "q052.webp",
       "imageAvailable": true,
       "style": "v02",
-      "imageStatus": "fallback"
+      "imageStatus": "original"
     },
     {
       "id": "q053",
@@ -633,10 +633,10 @@
       "author": "Suzy Kassem",
       "author_ko": "Suzy Kassem",
       "work_or_source": "Rise Up and Salute the Sun (2010)",
-      "image": "v01.webp",
+      "image": "q054.webp",
       "imageAvailable": true,
       "style": "v01",
-      "imageStatus": "fallback"
+      "imageStatus": "original"
     },
     {
       "id": "q055",
@@ -669,10 +669,10 @@
       "author": "Unattributed",
       "author_ko": "Unknown",
       "work_or_source": "Source/context not supplied",
-      "image": "v01.webp",
+      "image": "q057.webp",
       "imageAvailable": true,
       "style": "v01",
-      "imageStatus": "fallback"
+      "imageStatus": "original"
     },
     {
       "id": "q058",
@@ -729,10 +729,10 @@
       "author": "Unattributed",
       "author_ko": "Unknown",
       "work_or_source": "Source/context not supplied",
-      "image": "v03.webp",
+      "image": "q062.webp",
       "imageAvailable": true,
       "style": "v03",
-      "imageStatus": "fallback"
+      "imageStatus": "original"
     },
     {
       "id": "q063",
@@ -753,10 +753,10 @@
       "author": "Unattributed",
       "author_ko": "Unknown",
       "work_or_source": "Commonly attributed to Shantideva; exact source not confirmed",
-      "image": "v04.webp",
+      "image": "q064.webp",
       "imageAvailable": true,
       "style": "v04",
-      "imageStatus": "fallback"
+      "imageStatus": "original"
     },
     {
       "id": "q065",
@@ -777,10 +777,10 @@
       "author": "Unattributed",
       "author_ko": "Unknown",
       "work_or_source": "Modern saying",
-      "image": "v01.webp",
+      "image": "q066.webp",
       "imageAvailable": true,
       "style": "v01",
-      "imageStatus": "fallback"
+      "imageStatus": "original"
     },
     {
       "id": "q067",
@@ -801,10 +801,10 @@
       "author": "Unattributed",
       "author_ko": "석가모니",
       "work_or_source": "Unverified Korean saying; Buddha attribution unsupported",
-      "image": "v03.webp",
+      "image": "q068.webp",
       "imageAvailable": true,
       "style": "v03",
-      "imageStatus": "fallback"
+      "imageStatus": "original"
     },
     {
       "id": "q069",
@@ -825,10 +825,10 @@
       "author": "The Buddha (paraphrase)",
       "author_ko": "석가모니",
       "work_or_source": "Mahāparinibbāna Sutta, DN 16 (standard translation varies)",
-      "image": "v05.webp",
+      "image": "q070.webp",
       "imageAvailable": true,
       "style": "v05",
-      "imageStatus": "fallback"
+      "imageStatus": "original"
     },
     {
       "id": "q071",
@@ -837,10 +837,10 @@
       "author": "Unattributed",
       "author_ko": "Unknown",
       "work_or_source": "Source/context not supplied",
-      "image": "v01.webp",
+      "image": "q071.webp",
       "imageAvailable": true,
       "style": "v01",
-      "imageStatus": "fallback"
+      "imageStatus": "original"
     },
     {
       "id": "q072",
@@ -849,10 +849,10 @@
       "author": "Unattributed",
       "author_ko": "Unknown",
       "work_or_source": "Unverified modern passage",
-      "image": "v06.webp",
+      "image": "q072.webp",
       "imageAvailable": true,
       "style": "v06",
-      "imageStatus": "fallback"
+      "imageStatus": "original"
     },
     {
       "id": "q073",
@@ -873,10 +873,10 @@
       "author": "Unattributed",
       "author_ko": "석가모니",
       "work_or_source": "Modern saying; Buddha attribution unsupported",
-      "image": "v04.webp",
+      "image": "q074.webp",
       "imageAvailable": true,
       "style": "v04",
-      "imageStatus": "fallback"
+      "imageStatus": "original"
     },
     {
       "id": "q075",
@@ -885,10 +885,10 @@
       "author": "Unattributed",
       "author_ko": "석가모니",
       "work_or_source": "Modern self-help passage; Buddha attribution unsupported",
-      "image": "v05.webp",
+      "image": "q075.webp",
       "imageAvailable": true,
       "style": "v05",
-      "imageStatus": "fallback"
+      "imageStatus": "original"
     },
     {
       "id": "q076",
@@ -909,10 +909,10 @@
       "author": "Unattributed",
       "author_ko": "석가모니",
       "work_or_source": "Modern saying; Buddha attribution unsupported",
-      "image": "v10.webp",
+      "image": "q077.webp",
       "imageAvailable": true,
       "style": "v10",
-      "imageStatus": "fallback"
+      "imageStatus": "original"
     },
     {
       "id": "q078",
@@ -933,10 +933,10 @@
       "author": "Unattributed",
       "author_ko": "석가모니",
       "work_or_source": "Modern saying; often attributed to the Buddha without a source",
-      "image": "v01.webp",
+      "image": "q079.webp",
       "imageAvailable": true,
       "style": "v01",
-      "imageStatus": "fallback"
+      "imageStatus": "original"
     },
     {
       "id": "q080",
@@ -969,10 +969,10 @@
       "author": "Arnold Schwarzenegger (attributed)",
       "author_ko": "Arnold Schwarzenegger",
       "work_or_source": "Speech line; exact recording/source not located",
-      "image": "v02.webp",
+      "image": "q082.webp",
       "imageAvailable": true,
       "style": "v02",
-      "imageStatus": "fallback"
+      "imageStatus": "original"
     },
     {
       "id": "q083",
@@ -1005,10 +1005,10 @@
       "author": "Earl Nightingale",
       "author_ko": "Earl Nightingale",
       "work_or_source": "The Strangest Secret (1956)",
-      "image": "v09.webp",
+      "image": "q085.webp",
       "imageAvailable": true,
       "style": "v09",
-      "imageStatus": "fallback"
+      "imageStatus": "original"
     },
     {
       "id": "q086",
@@ -1017,10 +1017,10 @@
       "author": "Cleanthes (quoted by Seneca)",
       "author_ko": "Seneca",
       "work_or_source": "Seneca, Moral Letters 107.11",
-      "image": "v08.webp",
+      "image": "q086.webp",
       "imageAvailable": true,
       "style": "v08",
-      "imageStatus": "fallback"
+      "imageStatus": "original"
     },
     {
       "id": "q087",
@@ -1041,10 +1041,10 @@
       "author": "Unattributed (line from Itaewon Class)",
       "author_ko": "이태원클라스",
       "work_or_source": "Itaewon Class (Korean TV series, 2020); exact episode not confirmed",
-      "image": "v04.webp",
+      "image": "q088.webp",
       "imageAvailable": true,
       "style": "v04",
-      "imageStatus": "fallback"
+      "imageStatus": "original"
     },
     {
       "id": "q089",
@@ -1053,10 +1053,10 @@
       "author": "Unattributed",
       "author_ko": "Unknown",
       "work_or_source": "Source/context not supplied",
-      "image": "v07.webp",
+      "image": "q089.webp",
       "imageAvailable": true,
       "style": "v07",
-      "imageStatus": "fallback"
+      "imageStatus": "original"
     },
     {
       "id": "q090",
@@ -1065,10 +1065,10 @@
       "author": "Richard Feynman (attributed)",
       "author_ko": "리처드 파인만",
       "work_or_source": "Feynman attribution disputed; no primary source located",
-      "image": "v09.webp",
+      "image": "q090.webp",
       "imageAvailable": true,
       "style": "v09",
-      "imageStatus": "fallback"
+      "imageStatus": "original"
     },
     {
       "id": "q091",
@@ -1077,10 +1077,10 @@
       "author": "Jun Huh (attributed)",
       "author_ko": "허준이",
       "work_or_source": "Korean interview/quotation source not identified",
-      "image": "v05.webp",
+      "image": "q091.webp",
       "imageAvailable": true,
       "style": "v05",
-      "imageStatus": "fallback"
+      "imageStatus": "original"
     },
     {
       "id": "q092",
@@ -1137,10 +1137,10 @@
       "author": "Unattributed",
       "author_ko": "Unknown",
       "work_or_source": "Modern Korean saying",
-      "image": "v01.webp",
+      "image": "q096.webp",
       "imageAvailable": true,
       "style": "v01",
-      "imageStatus": "fallback"
+      "imageStatus": "original"
     },
     {
       "id": "q097",
@@ -1173,10 +1173,10 @@
       "author": "Unattributed (often credited to Gordon W. Allport)",
       "author_ko": "​고든 올포트",
       "work_or_source": "Source not verified; no passage located in The Nature of Prejudice",
-      "image": "v07.webp",
+      "image": "q099.webp",
       "imageAvailable": true,
       "style": "v07",
-      "imageStatus": "fallback"
+      "imageStatus": "original"
     },
     {
       "id": "q100",
@@ -1197,10 +1197,10 @@
       "author": "Carl Jung (attributed)",
       "author_ko": "칼 융",
       "work_or_source": "Commonly attributed to Jung; primary source not located",
-      "image": "v07.webp",
+      "image": "q101.webp",
       "imageAvailable": true,
       "style": "v07",
-      "imageStatus": "fallback"
+      "imageStatus": "original"
     },
     {
       "id": "q102",
@@ -1209,10 +1209,10 @@
       "author": "Nurhaci (attributed)",
       "author_ko": "누르하치",
       "work_or_source": "Source not identified; likely modern dramatization or paraphrase",
-      "image": "v10.webp",
+      "image": "q102.webp",
       "imageAvailable": true,
       "style": "v10",
-      "imageStatus": "fallback"
+      "imageStatus": "original"
     },
     {
       "id": "q103",
@@ -1233,10 +1233,10 @@
       "author": "Unattributed",
       "author_ko": "unknown",
       "work_or_source": "Source/context not supplied",
-      "image": "v02.webp",
+      "image": "q104.webp",
       "imageAvailable": true,
       "style": "v02",
-      "imageStatus": "fallback"
+      "imageStatus": "original"
     }
   ]
 }
