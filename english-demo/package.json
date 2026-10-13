@@ -1,0 +1,9 @@
+{
+  "name": "daily-quote-card",
+  "private": true,
+  "type": "module",
+  "packageManager": "npm@11.13.0",
+  "scripts": {
+    "check": "node --check app.js && node --check sw.js"
+  }
+}

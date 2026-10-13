@@ -1,0 +1,126 @@
+{
+  "version": 1,
+  "kind": "original-reflections",
+  "quotes": [
+    {
+      "id": "q01",
+      "text": "Begin with one small, honest step.",
+      "ko": "작고 정직한 한 걸음부터 시작하세요.",
+      "author": "Original reflection",
+      "theme": "small beginning",
+      "image": "q01.webp",
+      "imageStatus": "generated-visually-reviewed",
+      "imageAvailable": true
+    },
+    {
+      "id": "q02",
+      "text": "Let curiosity open the next door.",
+      "ko": "호기심으로 다음 문을 열어보세요.",
+      "author": "Original reflection",
+      "theme": "curiosity",
+      "image": "q02.webp",
+      "imageStatus": "generated-visually-reviewed",
+      "imageAvailable": true
+    },
+    {
+      "id": "q03",
+      "text": "Give one good thing your full attention.",
+      "ko": "좋은 일 하나에 온전히 집중하세요.",
+      "author": "Original reflection",
+      "theme": "focus",
+      "image": "q03.webp",
+      "imageStatus": "generated-visually-reviewed",
+      "imageAvailable": true
+    },
+    {
+      "id": "q04",
+      "text": "Quiet effort still changes the landscape.",
+      "ko": "조용한 노력도 풍경을 바꿉니다.",
+      "author": "Original reflection",
+      "theme": "patience",
+      "image": "q04.webp",
+      "imageStatus": "generated-visually-reviewed",
+      "imageAvailable": true
+    },
+    {
+      "id": "q05",
+      "text": "Rest is part of the journey.",
+      "ko": "쉼도 여정의 일부입니다.",
+      "author": "Original reflection",
+      "theme": "rest",
+      "image": "q05.webp",
+      "imageStatus": "generated-visually-reviewed",
+      "imageAvailable": true
+    },
+    {
+      "id": "q06",
+      "text": "Courage can be a gentle decision.",
+      "ko": "용기는 부드러운 결심일 수 있습니다.",
+      "author": "Original reflection",
+      "theme": "courage",
+      "image": "q06.webp",
+      "imageStatus": "generated-visually-reviewed",
+      "imageAvailable": true
+    },
+    {
+      "id": "q07",
+      "text": "A small kindness can travel far.",
+      "ko": "작은 친절은 멀리까지 갑니다.",
+      "author": "Original reflection",
+      "theme": "kindness",
+      "image": "q07.webp",
+      "imageStatus": "generated-visually-reviewed",
+      "imageAvailable": true
+    },
+    {
+      "id": "q08",
+      "text": "Leave room for both work and wonder.",
+      "ko": "일과 경이로움을 위한 공간을 남기세요.",
+      "author": "Original reflection",
+      "theme": "balance",
+      "image": "q08.webp",
+      "imageStatus": "generated-visually-reviewed",
+      "imageAvailable": true
+    },
+    {
+      "id": "q09",
+      "text": "Growth often begins below the surface.",
+      "ko": "성장은 종종 보이지 않는 곳에서 시작됩니다.",
+      "author": "Original reflection",
+      "theme": "growth",
+      "image": "q09.webp",
+      "imageStatus": "generated-visually-reviewed",
+      "imageAvailable": true
+    },
+    {
+      "id": "q10",
+      "text": "A new season asks for a new step.",
+      "ko": "새 계절에는 새로운 걸음이 필요합니다.",
+      "author": "Original reflection",
+      "theme": "change",
+      "image": "q10.webp",
+      "imageStatus": "generated-visually-reviewed",
+      "imageAvailable": true
+    },
+    {
+      "id": "q11",
+      "text": "Notice what quietly makes life brighter.",
+      "ko": "삶을 조용히 밝히는 것을 알아보세요.",
+      "author": "Original reflection",
+      "theme": "gratitude",
+      "image": "q11.webp",
+      "imageStatus": "generated-visually-reviewed",
+      "imageAvailable": true
+    },
+    {
+      "id": "q12",
+      "text": "You can begin again without starting from nothing.",
+      "ko": "처음으로 돌아가지 않아도 다시 시작할 수 있습니다.",
+      "author": "Original reflection",
+      "theme": "retry",
+      "image": "q12.webp",
+      "imageStatus": "generated-visually-reviewed",
+      "imageAvailable": true
+    }
+  ]
+}
