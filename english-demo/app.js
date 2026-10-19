@@ -9,11 +9,11 @@ const DRAWN_KEY = 'daily-quote-card.drawn.v2';
 const MIGRATION_KEY = 'daily-quote-card.migration.v1';
 const strings = {
   en: {eyebrow:'A FRESH PERSPECTIVE',heading:'A thought for today.',subheading:'A deck of 103 original quotes. A moment to make one your own.',
-    next:'Draw a card <span aria-hidden="true">↗</span>',history:'History',addQuote:'Add quote',
+    next:'Draw a card <svg class="action-card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="3"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>',history:'History',addQuote:'Add quote',today:'Today',mainNavLabel:'Main navigation',settings:'Settings',languageLabel:'Language',skip:'Skip to deck',optionsLabel:'App options',
     readyText:'Pick one card from the flowing deck — today’s reflection arrives.',
     deckLabel:'Quote card deck. Drag a card down, or press Enter to draw.',
     hintIdle:'Pull a card down to draw',hintHold:'Keep pulling down slowly',hintRelease:'Let go to reveal the card',
-    dismiss:'Dismiss card',memoCta:'Write your thought',
+    dismiss:'Dismiss card',memoCta:'Add a thought',
     addTitle:'Add a quote',addSub:'Add your own good thought to the deck.',
     qTextLabel:'Quote',qAuthorLabel:'Author or source',opt:'(optional)',
     qTextPlaceholder:'Write a line you want to keep close.',qAuthorPlaceholder:'Leave blank to save as Unknown.',
@@ -31,30 +31,30 @@ const strings = {
     newCard:'New card:',dismissed:'Card dismissed. You can draw a new one.',
     scrollHint:'Scroll to read the full quote ↓',
     cellLabel:(mon,d,n)=>`${mon} ${d} — ${n===1?'1 entry':n+' entries'}`,
-    install:'Install app',notify:'Try a test notification',help:'About Daily Quote Card',
+    install:'Install app',notify:'Try a test notification',help:'Help and app options',closeLabel:'Close',
     about:'A collection of 103 original quotes with author and source, in English and Korean. Saved cards and notes are stored only in this browser.',
-    notificationHelp:'Notifications here are an immediate, optional test. Daily or background push reminders are not enabled. On iPhone/iPad, notification support requires iOS/iPadOS 16.4 or later and a Home Screen installation; device settings still apply.',
+    notificationHelp:'Notifications are optional. This button asks for permission and sends one immediate local test when supported. It does not schedule reminders or use push delivery. Availability depends on your browser, operating system, and settings.',
     offlineHelp:'Cards can be read offline after your first online visit. Clearing browser storage removes saved notes.',
     footer:'Made by Haeminway',installTitle:'Add Daily Quote Card to your Home Screen',
-    installHelp:'On iPhone/iPad: open this page in Safari, tap Share, then Add to Home Screen. On other browsers, look for Install app in the browser menu. Availability depends on your browser.',
+    installHelp:'On iPhone or iPad, open this page in Safari and use Share → Add to Home Screen. In other browsers, use their install option when offered. Availability varies by browser.',
     close:'Got it',pending:'Illustration in progress',
     savedCard:'Card saved',removed:'Card removed from saved',
     save:'Save card',unsave:'Unsave card',share:'Share card',copied:'Card copied',
     shareFail:'Sharing is unavailable here. You can select and copy the card.',
     storageFail:'Browser storage is unavailable. Your changes will last only while this page stays open.',
     loadingFail:'The cards could not load. Please reconnect and reload.',
-    notifyUnsupported:'Notifications are not supported in this browser. On iPhone/iPad, install to the Home Screen first.',
+    notifyUnsupported:'Notifications are unavailable in this browser or on this device.',
     denied:'Notifications are blocked. You can change this in browser settings.',
     notifySent:'An immediate test notification was sent. Background reminders are not enabled.',
     notifyFail:'A notification could not be sent. Check device and browser settings.',
     installed:'Already running as an installed app.',offline:'You are offline. Cached cards are still available.',
     ready:'Ready for a fresh perspective.',counter:(n,of)=>`Card ${n} of ${of}`},
   ko: {eyebrow:'오늘을 위한 새로운 시선',heading:'오늘의 생각 한 장.',subheading:'103편의 명언과 그 출처. 나만의 의미를 더해보세요.',
-    next:'카드 뽑기 <span aria-hidden="true">↗</span>',history:'기록',addQuote:'명언 추가',
+    next:'카드 뽑기 <svg class="action-card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="3"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>',history:'기록',addQuote:'명언 추가',today:'오늘',mainNavLabel:'기본 탐색',settings:'설정',languageLabel:'언어',skip:'덱으로 이동',optionsLabel:'앱 옵션',
     readyText:'흐르는 카드 중 마음에 닿는 한 장을 뽑아보세요. 오늘의 좋은 생각이 도착합니다.',
     deckLabel:'명언 카드 덱. 카드를 아래로 당기거나 Enter를 눌러 뽑으세요.',
     hintIdle:'원하는 카드를 아래로 당겨 뽑으세요',hintHold:'천천히 아래로 당겨주세요',hintRelease:'놓으면 카드가 뽑혀요',
-    dismiss:'명언 카드 내리기',memoCta:'내 생각 메모',
+    dismiss:'명언 카드 내리기',memoCta:'생각 남기기',
     addTitle:'명언 추가',addSub:'나만의 좋은 생각을 덱에 더해보세요.',
     qTextLabel:'명언',qAuthorLabel:'작가 또는 출처',opt:'(선택)',
     qTextPlaceholder:'마음에 새기고 싶은 문장을 적어주세요.',qAuthorPlaceholder:'비워두면 ‘미상’으로 저장돼요.',
@@ -72,19 +72,19 @@ const strings = {
     newCard:'새 카드:',dismissed:'명언 카드를 내렸습니다. 새 카드를 뽑을 수 있습니다.',
     scrollHint:'아래로 스크롤해 전체 문구 읽기 ↓',
     cellLabel:(mon,d,n)=>`${mon} ${d}일, 기록 ${n}개`,
-    install:'앱 설치',notify:'테스트 알림 보내기',help:'Daily Quote Card 소개',
+    install:'앱 설치',notify:'테스트 알림 보내기',help:'도움말 및 앱 옵션',closeLabel:'닫기',
     about:'작가와 출처가 있는 103편의 명언을 영어와 한국어로 모았습니다. 저장한 카드와 메모는 이 브라우저에만 보관됩니다.',
-    notificationHelp:'알림은 선택해서 즉시 보내는 테스트입니다. 매일 알림이나 백그라운드 푸시는 제공하지 않습니다. iPhone/iPad는 iOS/iPadOS 16.4 이상에서 홈 화면 설치가 필요하며, 기기 설정에 따라 달라집니다.',
+    notificationHelp:'알림은 선택 기능입니다. 이 버튼은 권한을 요청하고 지원되는 환경에서 즉시 로컬 테스트 알림 한 번을 보냅니다. 예약 알림이나 푸시는 제공하지 않습니다. 지원 여부는 브라우저, 운영체제, 설정에 따라 달라집니다.',
     offlineHelp:'온라인으로 한 번 방문하면 오프라인에서도 카드를 읽을 수 있습니다. 브라우저 저장 공간을 지우면 메모도 삭제됩니다.',
     footer:'Haeminway 제작',installTitle:'홈 화면에 Daily Quote Card 추가',
-    installHelp:'iPhone/iPad에서는 Safari로 열고 공유 → 홈 화면에 추가를 누르세요. 다른 브라우저에서는 메뉴의 앱 설치를 확인하세요. 설치 지원은 브라우저마다 다릅니다.',
+    installHelp:'iPhone/iPad에서는 Safari로 열고 공유 → 홈 화면에 추가를 선택하세요. 다른 브라우저에서는 설치 기능을 제공할 때 해당 메뉴를 이용하세요. 지원 여부는 브라우저마다 다릅니다.',
     close:'확인',pending:'그림을 준비하고 있어요',
     savedCard:'카드를 저장했어요',removed:'저장한 카드에서 삭제했어요',
     save:'카드 저장',unsave:'카드 저장 해제',share:'카드 공유',copied:'카드를 복사했어요',
     shareFail:'이 환경에서 공유할 수 없습니다. 문장을 선택해서 복사할 수 있어요.',
     storageFail:'브라우저 저장 공간을 사용할 수 없습니다. 페이지를 닫으면 변경 사항이 사라집니다.',
     loadingFail:'카드를 불러오지 못했습니다. 인터넷에 연결한 후 새로고침하세요.',
-    notifyUnsupported:'이 브라우저는 알림을 지원하지 않습니다. iPhone/iPad는 먼저 홈 화면에 설치하세요.',
+    notifyUnsupported:'이 브라우저나 기기에서는 알림을 사용할 수 없습니다.',
     denied:'알림이 차단되어 있습니다. 브라우저 설정에서 변경할 수 있어요.',
     notifySent:'즉시 테스트 알림을 보냈어요. 백그라운드 알림은 제공하지 않습니다.',
     notifyFail:'알림을 보내지 못했습니다. 기기와 브라우저 설정을 확인하세요.',
@@ -273,8 +273,20 @@ var SPEED = reduce ? 0 : 26;        // px / second
 var THRESHOLD = 120;
 var cards=[], cx=0, HALF=0;
 function measure(){
-  cx=deck.clientWidth/2; HALF=cx;
-  ARC_H=(HALF*Math.tan(MAX_TILT*Math.PI/180))/2;
+  var width=deck.clientWidth, height=deck.clientHeight;
+  var angle=MAX_TILT*Math.PI/180, cos=Math.cos(angle), sin=Math.sin(angle);
+  cx=width/2; HALF=cx;
+  ARC_H=(HALF*Math.tan(angle))/2;
+  var widthFactor=cos+(4/3)*sin+0.55;
+  var heightFactor=(4/3)*cos+sin;
+  CARD_W=Math.min(220,(width-16)/widthFactor,(height-12-ARC_H)/heightFactor);
+  CARD_H=CARD_W*4/3;
+  var rotatedWidth=CARD_W*cos+CARD_H*sin;
+  GAP=Math.min(124,Math.max(16,width-rotatedWidth-16));
+  SPAN=N*GAP; TRACK_OFFSET=GAP/2;
+  BASE_TOP=(height-CARD_H)/2-ARC_H/2;
+  deck.style.setProperty("--dqc-card-width",CARD_W+"px");
+  deck.style.setProperty("--dqc-card-height",CARD_H+"px");
 }
 var cardImageIdx=[], cardPrevX=[], nextBeltImage=0;
 function cardInner(i){
@@ -338,14 +350,13 @@ function eventPoint(e){
   return {x:p.clientX,y:p.clientY};
 }
 function cardAtPoint(clientX,clientY){
-  var rect=deck.getBoundingClientRect(), x=clientX-rect.left, y=clientY-rect.top;
   var best=-1, score=1e9;
   for(var i=0;i<N;i++){
     var s=styleFor(beltX(i));
     if(s.op<0.2) continue;
-    var left=cx+s.x-CARD_W/2, top=s.y, padX=10, padY=8;
-    if(x<left-padX||x>left+CARD_W+padX||y<top-padY||y>top+CARD_H+padY) continue;
-    var dx=Math.abs(x-(left+CARD_W/2)), dy=Math.abs(y-(top+CARD_H/2))*0.25;
+    var bounds=cards[i].getBoundingClientRect(), padX=10, padY=8;
+    if(clientX<bounds.left-padX||clientX>bounds.right+padX||clientY<bounds.top-padY||clientY>bounds.bottom+padY) continue;
+    var dx=Math.abs(clientX-(bounds.left+bounds.width/2)), dy=Math.abs(clientY-(bounds.top+bounds.height/2))*0.25;
     var next=dx+dy+(1-s.op)*90;
     if(next<score){ score=next; best=i; }
   }
@@ -457,8 +468,9 @@ function pickQuote(){
 function drawTarget(){
   var stageEl=deck.closest(".stage")||deck, stageRect=stageEl.getBoundingClientRect();
   var deckRect=deck.getBoundingClientRect();
-  var y=stageRect.height*0.5-(deckRect.top-stageRect.top)-CARD_H/2;
-  var scale=clamp((deck.clientWidth-62)/CARD_W,.98,1.48);
+  var targetCenterY=stageRect.height/2-(deckRect.top-stageRect.top);
+  var y=targetCenterY-CARD_H/2;
+  var scale=Math.min((deck.clientWidth-16)/CARD_W,(stageRect.height-16)/CARD_H);
   return {x:0,y:y,tilt:-2,scale:scale,z:3500};
 }
 
@@ -501,7 +513,8 @@ var currentQuote={id:"",en:"",ko:"",a:"",a_ko:"",work:"",theme:"",image:"",image
 function quoteDisplayText(){ return state.lang==="ko"&&currentQuote.ko ? currentQuote.ko : currentQuote.en; }
 function quoteDisplayAuthor(){
   if(currentQuote.custom) return currentQuote.a || t("unknownAuthor");
-  var name=state.lang==="ko" ? (currentQuote.a_ko||currentQuote.a) : currentQuote.a;
+  var hasAttributionCaveat=/\bmisattributed\b/i.test(currentQuote.a);
+  var name=state.lang==="ko"&&!hasAttributionCaveat ? (currentQuote.a_ko||currentQuote.a) : currentQuote.a;
   return name || t("unknownAuthor");
 }
 function recordDrawnCard(quote){
@@ -528,7 +541,7 @@ function updateQuoteCardContent(){
   if(currentQuote.custom){ var b=document.createElement("span"); b.className="quote-badge"; b.textContent=t("yourQuote"); quoteAuthor.appendChild(b); }
   quoteTheme.textContent=currentQuote.custom ? t("yourQuote") : (state.lang==="ko" ? "오늘의 생각" : currentQuote.theme);
   quoteIndex.textContent=t("counter")(currentQuote.idx+1,QUOTES.length);
-  var src=(!currentQuote.custom&&currentQuote.work)?currentQuote.work:"";
+  var src=(!currentQuote.custom&&currentQuote.work&&currentQuote.work.trim()!=="Source/context not supplied")?currentQuote.work:"";
   quoteSource.textContent=src; quoteSource.hidden=!src;
   quoteMedia.replaceChildren();
   if(currentQuote.imageAvailable&&currentQuote.image){
@@ -576,6 +589,7 @@ function finishDismiss(focusDeck){
   testHook.dismissCount = (testHook.dismissCount || 0) + 1;
   live.textContent=t("dismissed");
   if(focusDeck) deck.focus();
+  measureQuoteScroll();
 }
 
 function dismissQuote(focusDeck){
@@ -617,13 +631,17 @@ var quoteScrollMeasureKey="";
 function updateQuoteScrollState(){
   quoteScrollRaf=0;
   if(!quoteScroll||!quoteScrollHint) return;
+  var shell=document.querySelector(".shell"), anchor=quoteCard.hidden?hint:quoteCard;
+  var gap=drawButton.offsetTop-(anchor.getBoundingClientRect().bottom-shell.getBoundingClientRect().top);
+  var lift=Math.max(0,Math.min(160,gap-36,drawButton.offsetTop-shell.clientHeight*.67));
+  drawButton.style.transform="translateY(-"+lift+"px)";
   var nextKey=currentQuote.id+"|"+state.lang+"|"+quoteCard.clientWidth+"|"+quoteCard.clientHeight;
   if(nextKey!==quoteScrollMeasureKey){
-    quoteScrollMeasureKey=nextKey; quoteScrollHint.hidden=true;
-    quoteScroll.classList.remove("is-over","has-more","has-above");
+    quoteScrollMeasureKey=nextKey;
+    quoteScroll.classList.remove("has-more","has-above");
   }
   var over=quoteScroll.scrollHeight>quoteScroll.clientHeight+1;
-  var atEnd=!over||quoteScroll.scrollTop+quoteScroll.clientHeight>=quoteScroll.scrollHeight-1;
+  var atEnd=!over||quoteScroll.scrollTop+quoteScroll.clientHeight>=quoteScroll.scrollHeight-(parseFloat(getComputedStyle(quoteScroll).paddingBottom)||0)-1;
   quoteScroll.classList.toggle("is-over",over);
   quoteScroll.classList.toggle("has-more",over&&!atEnd);
   quoteScroll.classList.toggle("has-above",over&&quoteScroll.scrollTop>1);
@@ -681,7 +699,7 @@ if(quoteScroll) quoteScroll.addEventListener("scroll",measureQuoteScroll);
 quoteDismiss.addEventListener("click",function(){ dismissQuote(true); });
 
 /* ===================== generic sheet controller ===================== */
-function focusables(root){ return Array.prototype.filter.call(root.querySelectorAll('button,textarea,input,[tabindex]'),function(x){return !x.disabled && x.offsetParent!==null;}); }
+function focusables(root){ return Array.prototype.filter.call(root.querySelectorAll('button,select,textarea,input,summary,a[href],[tabindex]'),function(x){return !x.disabled && x.offsetParent!==null;}); }
 function openSheet(root,focusEl){
   Array.prototype.forEach.call(document.querySelectorAll(".sheet-root.open"),function(o){
     if(o!==root){ o.classList.remove("open"); o.hidden=true; if(o._key) document.removeEventListener("keydown",o._key); }
@@ -697,10 +715,10 @@ function openSheet(root,focusEl){
   };
   document.addEventListener("keydown",root._key);
 }
-function closeSheet(root){
+function closeSheet(root,restoreFocus){
   root.classList.remove("open");
   document.removeEventListener("keydown",root._key);
-  var fin=function(){ root.hidden=true; if(root._last&&root._last.focus) root._last.focus(); };
+  var fin=function(){ root.hidden=true; if(restoreFocus!==false&&root._last&&root._last.focus) root._last.focus(); };
   if(reduce) fin(); else setTimeout(fin,420);
 }
 Array.prototype.forEach.call(document.querySelectorAll(".backdrop[data-close]"),function(bd){
@@ -708,9 +726,19 @@ Array.prototype.forEach.call(document.querySelectorAll(".backdrop[data-close]"),
 });
 
 /* ===================== add a quote ===================== */
+var settingsRoot=$("settingsRoot");
+$("openSettings").addEventListener("click",function(){ openSheet(settingsRoot); });
+$("settingsClose").addEventListener("click",function(){ closeSheet(settingsRoot); });
+$("showToday").addEventListener("click",function(){
+  var open=document.querySelector(".sheet-root.open");
+  if(open) closeSheet(open,false);
+  if(!quoteCard.hidden) dismissQuote(true);
+  else deck.focus({preventScroll:true});
+});
 var addRoot=$("addRoot");
 var qText=$("qText"), qAuthor=$("qAuthor");
 var addField=$("addField"), textCount=$("textCount");
+$("addClose").addEventListener("click",function(){ closeSheet(addRoot); });
 $("openAddTop").addEventListener("click",function(){
   qText.value=""; qAuthor.value=""; textCount.textContent="0/120"; addField.classList.remove("error","shake");
   openSheet(addRoot,qText);
@@ -746,6 +774,7 @@ $("addSave").addEventListener("click",function(){
 var memoRoot=$("memoRoot");
 var memoText=$("memoText"), memoField=$("memoField"), memoCount=$("memoCount");
 var memoWhen=$("memoWhen");
+$("memoClose").addEventListener("click",function(){ closeSheet(memoRoot); });
 $("memoBtn").addEventListener("click",function(){
   if(!currentQuote.en) return;
   var now=new Date();
@@ -846,6 +875,7 @@ $("openCal").addEventListener("click",function(){
   var t2=new Date(); viewY=t2.getFullYear(); viewM=t2.getMonth();
   renderCalendar(); openSheet(calRoot);
 });
+$("calClose").addEventListener("click",function(){ closeSheet(calRoot); });
 $("calPrev").addEventListener("click",function(){ viewM--; if(viewM<0){viewM=11;viewY--;} renderCalendar(); });
 $("calNext").addEventListener("click",function(){ viewM++; if(viewM>11){viewM=0;viewY++;} renderCalendar(); });
 $("calBack").addEventListener("click",renderCalendar);
@@ -864,6 +894,10 @@ function render(){
   quoteDismiss.setAttribute("aria-label",t("dismiss"));
   $("openCal").setAttribute("aria-label",t("calTitle"));
   $("openAddTop").setAttribute("aria-label",t("addQuote"));
+  $("openSettings").setAttribute("aria-label",t("settings"));
+  document.querySelector(".bottom-nav").setAttribute("aria-label",t("mainNavLabel"));
+  $("settingsOptions").setAttribute("aria-label",t("optionsLabel"));
+  ["settingsClose","addClose","memoClose","calClose"].forEach(function(id){ $(id).setAttribute("aria-label",t("closeLabel")); });
   $("calPrev").setAttribute("aria-label",t("prevMonth"));
   $("calNext").setAttribute("aria-label",t("nextMonth"));
   shareBtn.setAttribute("aria-label",t("share"));
@@ -948,6 +982,7 @@ window.addEventListener("resize",measure);
 window.addEventListener("resize",measureQuoteScroll);
 render();
 setHint("idle");
+measureQuoteScroll();
 tick();
 var beltRaf=0;
 if(window.requestAnimationFrame){

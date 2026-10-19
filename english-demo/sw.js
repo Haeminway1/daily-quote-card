@@ -1,4 +1,4 @@
-const CACHE = 'daily-quote-card-shell-v4-e98bf5c71fcf52c7';
+const CACHE = 'daily-quote-card-shell-v8-20261020';
 const BASE = new URL('./',self.location.href);
 const CORE = ['./','index.html','style.css','aquila.css','app.js','deck.json','manifest.webmanifest','icons/icon-192.png','icons/icon-512.png'].map(p=>new URL(p,BASE).href);
 self.addEventListener('install',event => event.waitUntil((async()=>{
